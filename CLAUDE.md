@@ -68,7 +68,13 @@ npm run lint && npm run format:check && npm run typecheck && npm test && npm run
 API integration tests need `TEST_DATABASE_URL` (`qahub_test`); `apps/api/test/global-setup.ts`
 creates, migrates and seeds it. Tests create users with unique emails, inject a clock
 (`testClock()`), and raise the auth rate limit via `makeApp()`. CI (`.github/workflows/ci.yml`) runs
-the same with a Postgres service. Verify UI changes in the browser, not only with tests.
+the same with a Postgres service, then the e2e tests. Verify UI changes in the browser, not only with tests.
+
+End-to-end: `npm run e2e` (Playwright, Chromium; first time `npx playwright install chromium`).
+`playwright.config.ts` starts `apps/api/scripts/e2e-server.ts` on :3100 (own `qahub_e2e` database,
+derived from `TEST_DATABASE_URL`, prepared on start; Google replaced by a test-only consent screen)
+and `vite preview` of a fresh build on :4173, so it runs alongside the dev servers. Locally it reuses
+servers that are already up: stop them after changing API code.
 
 ## Architecture
 
@@ -119,10 +125,9 @@ profile page. Pending user confirmation: real Google sign-in in their own browse
 
 M8 — tests and deployment:
 
-1. Playwright end-to-end tests (guest flow, register → import → XP, daily task → streak, mocked
-   Google via a test-only route), wired into CI.
-2. Bundle: the web build warns about a >500 kB chunk; split routes (lazy views) and keep zod out of
-   the client bundle where possible.
+1. ~~Playwright e2e tests, wired into CI~~ (done: `e2e/`).
+2. ~~Bundle split~~ (done: lazy route views; zod schemas live in `*.schema.ts` and `@qa-hub/shared` is
+   `sideEffects: false`, so the web bundle has no zod. Keep schemas out of the runtime modules).
 3. Hosting: API + Postgres (Render/Railway/Fly). Keep the web app on GitHub Pages under the same
    origin (`ryanchynskyi.github.io`) so the legacy `qa-hub-v1` save is auto-importable; set
    `VITE_API_URL`, `WEB_ORIGIN`, `WEB_APP_URL`, `COOKIE_SECURE=true`. **Decide the cookie strategy:**

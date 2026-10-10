@@ -12,8 +12,11 @@ const apiDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export default async function setup() {
   const url = process.env.TEST_DATABASE_URL;
-  if (!url) return;
+  if (url) await prepareDatabase(url);
+}
 
+/** Creates the database if missing, then migrates and seeds it. Also used by the e2e server. */
+export async function prepareDatabase(url: string) {
   const target = new URL(url);
   const name = target.pathname.slice(1);
   if (!/^[a-z0-9_]+$/i.test(name)) throw new Error(`Unexpected test database name: ${name}`);
