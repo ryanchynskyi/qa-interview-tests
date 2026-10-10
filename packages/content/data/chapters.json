@@ -1,0 +1,639 @@
+[
+  {
+    "id": "pw-arch",
+    "topicId": "playwright",
+    "title": "Архітектура і ізоляція",
+    "subtitle": "",
+    "order": 0
+  },
+  {
+    "id": "pw-bcp",
+    "topicId": "playwright",
+    "title": "Browser, Context, Page",
+    "subtitle": "",
+    "order": 1
+  },
+  {
+    "id": "pw-loc",
+    "topicId": "playwright",
+    "title": "Локатори",
+    "subtitle": "",
+    "order": 2
+  },
+  {
+    "id": "pw-wait",
+    "topicId": "playwright",
+    "title": "Auto-waiting і web-first асерти",
+    "subtitle": "",
+    "order": 3
+  },
+  {
+    "id": "pw-act",
+    "topicId": "playwright",
+    "title": "Взаємодія: дії, вкладки, фрейми, файли, діалоги",
+    "subtitle": "",
+    "order": 4
+  },
+  {
+    "id": "pw-fix",
+    "topicId": "playwright",
+    "title": "Фікстури й структура тестів",
+    "subtitle": "",
+    "order": 5
+  },
+  {
+    "id": "pw-net",
+    "topicId": "playwright",
+    "title": "Мережа: route, моки, API-тести",
+    "subtitle": "",
+    "order": 6
+  },
+  {
+    "id": "pw-auth",
+    "topicId": "playwright",
+    "title": "Авторизація і storageState",
+    "subtitle": "",
+    "order": 7
+  },
+  {
+    "id": "pw-cfg",
+    "topicId": "playwright",
+    "title": "Конфіг, проєкти, паралельність, CI",
+    "subtitle": "",
+    "order": 8
+  },
+  {
+    "id": "pw-dbg",
+    "topicId": "playwright",
+    "title": "Дебаг, trace viewer, звіти, flaky",
+    "subtitle": "",
+    "order": 9
+  },
+  {
+    "id": "pw-emu",
+    "topicId": "playwright",
+    "title": "Емуляція і середовище",
+    "subtitle": "",
+    "order": 10
+  },
+  {
+    "id": "cy-0",
+    "topicId": "cypress",
+    "title": "Основи й архітектура",
+    "subtitle": "як влаштований фреймворк",
+    "order": 0
+  },
+  {
+    "id": "cy-1",
+    "topicId": "cypress",
+    "title": "Черга команд і асинхронність",
+    "subtitle": "чому немає await",
+    "order": 1
+  },
+  {
+    "id": "cy-2",
+    "topicId": "cypress",
+    "title": "Retry-ability, очікування, таймаути",
+    "subtitle": "звідки береться стабільність",
+    "order": 2
+  },
+  {
+    "id": "cy-3",
+    "topicId": "cypress",
+    "title": "Локатори й робота з DOM",
+    "subtitle": "пошук елементів і взаємодія",
+    "order": 3
+  },
+  {
+    "id": "cy-4",
+    "topicId": "cypress",
+    "title": "Мережа: cy.intercept",
+    "subtitle": "перехоплення й моки",
+    "order": 4
+  },
+  {
+    "id": "cy-5",
+    "topicId": "cypress",
+    "title": "API-тестування",
+    "subtitle": "cy.request від простого до Senior",
+    "order": 5
+  },
+  {
+    "id": "cy-6",
+    "topicId": "cypress",
+    "title": "Стан, сесії, ізоляція",
+    "subtitle": "логін, cookies, кілька доменів",
+    "order": 6
+  },
+  {
+    "id": "cy-7",
+    "topicId": "cypress",
+    "title": "Архітектура фреймворку",
+    "subtitle": "POM, команди, конфіг, cy.task",
+    "order": 7
+  },
+  {
+    "id": "cy-8",
+    "topicId": "cypress",
+    "title": "CI, паралелізація, звіти",
+    "subtitle": "запуск у пайплайні",
+    "order": 8
+  },
+  {
+    "id": "cy-9",
+    "topicId": "cypress",
+    "title": "Cypress проти Playwright",
+    "subtitle": "порівняння й міграція",
+    "order": 9
+  },
+  {
+    "id": "cy-10",
+    "topicId": "cypress",
+    "title": "Пастки застарілих відповідей",
+    "subtitle": "що досі пишуть в інтернеті, і як правильно",
+    "order": 10
+  },
+  {
+    "id": "cy-11",
+    "topicId": "cypress",
+    "title": "Додаткові питання з типових списків",
+    "subtitle": "хуки, асерти, Shadow DOM, дебаг",
+    "order": 11
+  },
+  {
+    "id": "ts-basics",
+    "topicId": "typescript",
+    "title": "Основи: примітиви, any, unknown, never, літерали",
+    "subtitle": "",
+    "order": 0
+  },
+  {
+    "id": "ts-obj",
+    "topicId": "typescript",
+    "title": "Обʼєктні типи: interface і type, optional, readonly",
+    "subtitle": "",
+    "order": 1
+  },
+  {
+    "id": "ts-narrow",
+    "topicId": "typescript",
+    "title": "Звуження типів і type guards",
+    "subtitle": "",
+    "order": 2
+  },
+  {
+    "id": "ts-gen",
+    "topicId": "typescript",
+    "title": "Generics",
+    "subtitle": "",
+    "order": 3
+  },
+  {
+    "id": "ts-util",
+    "topicId": "typescript",
+    "title": "Utility types",
+    "subtitle": "",
+    "order": 4
+  },
+  {
+    "id": "ts-class",
+    "topicId": "typescript",
+    "title": "Класи і модифікатори доступу",
+    "subtitle": "",
+    "order": 5
+  },
+  {
+    "id": "ts-async",
+    "topicId": "typescript",
+    "title": "Асинхронність: Promise, async/await, паралельність",
+    "subtitle": "",
+    "order": 6
+  },
+  {
+    "id": "ts-adv",
+    "topicId": "typescript",
+    "title": "Просунуті типи: keyof, typeof, mapped, conditional, template literal",
+    "subtitle": "",
+    "order": 7
+  },
+  {
+    "id": "ts-mod",
+    "topicId": "typescript",
+    "title": "Модулі й tsconfig",
+    "subtitle": "",
+    "order": 8
+  },
+  {
+    "id": "ts-js",
+    "topicId": "typescript",
+    "title": "JS-пастки: числа і гроші, рядки, дати, обʼєкти й масиви",
+    "subtitle": "",
+    "order": 9
+  },
+  {
+    "id": "mq-0",
+    "topicId": "manual",
+    "title": "Основи тестування",
+    "subtitle": "принципи, SDLC, STLC, рівні",
+    "order": 0
+  },
+  {
+    "id": "mq-1",
+    "topicId": "manual",
+    "title": "Види тестування",
+    "subtitle": "smoke, regression, exploratory та інші",
+    "order": 1
+  },
+  {
+    "id": "mq-2",
+    "topicId": "manual",
+    "title": "Техніки тест-дизайну",
+    "subtitle": "як вибрати, що тестувати",
+    "order": 2
+  },
+  {
+    "id": "mq-3",
+    "topicId": "manual",
+    "title": "Тестова документація",
+    "subtitle": "план, кейси, чеклісти, звіти",
+    "order": 3
+  },
+  {
+    "id": "mq-4",
+    "topicId": "manual",
+    "title": "Баги",
+    "subtitle": "репорти, severity, життєвий цикл",
+    "order": 4
+  },
+  {
+    "id": "mq-5",
+    "topicId": "manual",
+    "title": "Процеси й Agile",
+    "subtitle": "Scrum, shift-left, релізи",
+    "order": 5
+  },
+  {
+    "id": "mq-6",
+    "topicId": "manual",
+    "title": "Web і клієнт-сервер",
+    "subtitle": "HTTP, браузер, DevTools",
+    "order": 6
+  },
+  {
+    "id": "mq-7",
+    "topicId": "manual",
+    "title": "API вручну",
+    "subtitle": "REST, Postman, Swagger",
+    "order": 7
+  },
+  {
+    "id": "mq-8",
+    "topicId": "manual",
+    "title": "SQL для QA",
+    "subtitle": "перевірка даних у базі",
+    "order": 8
+  },
+  {
+    "id": "mq-9",
+    "topicId": "manual",
+    "title": "Специфіка фінтеху",
+    "subtitle": "гроші, платежі, транзакції",
+    "order": 9
+  },
+  {
+    "id": "mq-10",
+    "topicId": "manual",
+    "title": "Метрики якості",
+    "subtitle": "що міряти, як рахувати, чого уникати",
+    "order": 10
+  },
+  {
+    "id": "mq-11",
+    "topicId": "manual",
+    "title": "Docker для QA",
+    "subtitle": "контейнери, Compose, діагностика",
+    "order": 11
+  },
+  {
+    "id": "mq-12",
+    "topicId": "manual",
+    "title": "AI в тестуванні",
+    "subtitle": "LLM, промпти, галюцинації, тестування AI-фіч",
+    "order": 12
+  },
+  {
+    "id": "mq-13",
+    "topicId": "manual",
+    "title": "Ситуаційні питання",
+    "subtitle": "що робитимеш, якщо…",
+    "order": 13
+  },
+  {
+    "id": "sq-0",
+    "topicId": "sql",
+    "title": "Основи баз даних",
+    "subtitle": "таблиці, ключі, типи, NULL",
+    "order": 0
+  },
+  {
+    "id": "sq-1",
+    "topicId": "sql",
+    "title": "SELECT і фільтрація",
+    "subtitle": "WHERE, порядок виконання, сортування",
+    "order": 1
+  },
+  {
+    "id": "sq-2",
+    "topicId": "sql",
+    "title": "Агрегація",
+    "subtitle": "COUNT, GROUP BY, HAVING, CASE",
+    "order": 2
+  },
+  {
+    "id": "sq-3",
+    "topicId": "sql",
+    "title": "JOIN",
+    "subtitle": "типи з'єднань і їхні пастки",
+    "order": 3
+  },
+  {
+    "id": "sq-4",
+    "topicId": "sql",
+    "title": "Підзапити, CTE, множини",
+    "subtitle": "IN, EXISTS, WITH, UNION",
+    "order": 4
+  },
+  {
+    "id": "sq-5",
+    "topicId": "sql",
+    "title": "Зміна даних і транзакції",
+    "subtitle": "INSERT, UPDATE, DELETE, ACID, ізоляція",
+    "order": 5
+  },
+  {
+    "id": "sq-6",
+    "topicId": "sql",
+    "title": "Структура бази",
+    "subtitle": "обмеження, індекси, нормалізація, міграції",
+    "order": 6
+  },
+  {
+    "id": "sq-7",
+    "topicId": "sql",
+    "title": "Віконні функції",
+    "subtitle": "ранги, top-N, LAG, накопичувальні суми",
+    "order": 7
+  },
+  {
+    "id": "sq-8",
+    "topicId": "sql",
+    "title": "SQL у роботі QA",
+    "subtitle": "перевірки, цілісність, дані, автотести",
+    "order": 8
+  },
+  {
+    "id": "sq-9",
+    "topicId": "sql",
+    "title": "Задачі зі співбесід",
+    "subtitle": "напиши запит",
+    "order": 9
+  },
+  {
+    "id": "api-cs",
+    "topicId": "api",
+    "title": "Клієнт-сервер і REST",
+    "subtitle": "",
+    "order": 0
+  },
+  {
+    "id": "api-anatomy",
+    "topicId": "api",
+    "title": "Анатомія запиту й відповіді",
+    "subtitle": "",
+    "order": 1
+  },
+  {
+    "id": "api-methods",
+    "topicId": "api",
+    "title": "HTTP-методи й ідемпотентність",
+    "subtitle": "",
+    "order": 2
+  },
+  {
+    "id": "api-status",
+    "topicId": "api",
+    "title": "Статус-коди",
+    "subtitle": "",
+    "order": 3
+  },
+  {
+    "id": "api-postman",
+    "topicId": "api",
+    "title": "Postman: структура і змінні",
+    "subtitle": "",
+    "order": 4
+  },
+  {
+    "id": "api-auth",
+    "topicId": "api",
+    "title": "Авторизація",
+    "subtitle": "",
+    "order": 5
+  },
+  {
+    "id": "api-scripts",
+    "topicId": "api",
+    "title": "Скрипти і перевірки в Postman",
+    "subtitle": "",
+    "order": 6
+  },
+  {
+    "id": "api-runner",
+    "topicId": "api",
+    "title": "Runner, data-driven і Newman",
+    "subtitle": "",
+    "order": 7
+  },
+  {
+    "id": "api-checklist",
+    "topicId": "api",
+    "title": "Чекліст: що перевіряти в ендпоінті",
+    "subtitle": "",
+    "order": 8
+  },
+  {
+    "id": "api-faq",
+    "topicId": "api",
+    "title": "Питання зі співбесід коротко",
+    "subtitle": "",
+    "order": 9
+  },
+  {
+    "id": "api-design",
+    "topicId": "api",
+    "title": "Дизайн API: ресурси, пагінація, версіонування, GraphQL",
+    "subtitle": "",
+    "order": 10
+  },
+  {
+    "id": "api-headers",
+    "topicId": "api",
+    "title": "Заголовки, кеш і CORS",
+    "subtitle": "",
+    "order": 11
+  },
+  {
+    "id": "api-security",
+    "topicId": "api",
+    "title": "Безпека API",
+    "subtitle": "",
+    "order": 12
+  },
+  {
+    "id": "api-contracts",
+    "topicId": "api",
+    "title": "Документація й контракти: OpenAPI, JSON Schema, contract testing",
+    "subtitle": "",
+    "order": 13
+  },
+  {
+    "id": "api-perf",
+    "topicId": "api",
+    "title": "Продуктивність і надійність",
+    "subtitle": "",
+    "order": 14
+  },
+  {
+    "id": "sd-approach",
+    "topicId": "sysdesign",
+    "title": "Як відповідати на System Design співбесіді",
+    "subtitle": "",
+    "order": 0
+  },
+  {
+    "id": "sd-framework",
+    "topicId": "sysdesign",
+    "title": "Архітектура тест-фреймворку",
+    "subtitle": "",
+    "order": 1
+  },
+  {
+    "id": "sd-data",
+    "topicId": "sysdesign",
+    "title": "Тестові дані й оточення",
+    "subtitle": "",
+    "order": 2
+  },
+  {
+    "id": "sd-ci",
+    "topicId": "sysdesign",
+    "title": "CI/CD, паралелізація і шардинг",
+    "subtitle": "",
+    "order": 3
+  },
+  {
+    "id": "sd-flaky",
+    "topicId": "sysdesign",
+    "title": "Стабільність і flaky-тести",
+    "subtitle": "",
+    "order": 4
+  },
+  {
+    "id": "sd-report",
+    "topicId": "sysdesign",
+    "title": "Звітність, метрики, observability",
+    "subtitle": "",
+    "order": 5
+  },
+  {
+    "id": "sd-backend",
+    "topicId": "sysdesign",
+    "title": "Основи бекенду: LB, кеш, БД, черги",
+    "subtitle": "",
+    "order": 6
+  },
+  {
+    "id": "sd-micro",
+    "topicId": "sysdesign",
+    "title": "Мікросервіси і стратегія тестування",
+    "subtitle": "",
+    "order": 7
+  },
+  {
+    "id": "sd-scale",
+    "topicId": "sysdesign",
+    "title": "Масштабування й надійність",
+    "subtitle": "",
+    "order": 8
+  },
+  {
+    "id": "pt-pom",
+    "topicId": "patterns",
+    "title": "Page Object Model",
+    "subtitle": "",
+    "order": 0
+  },
+  {
+    "id": "pt-comp",
+    "topicId": "patterns",
+    "title": "Page Component і композиція",
+    "subtitle": "",
+    "order": 1
+  },
+  {
+    "id": "pt-fixtures",
+    "topicId": "patterns",
+    "title": "Фікстури як Dependency Injection",
+    "subtitle": "",
+    "order": 2
+  },
+  {
+    "id": "pt-builder",
+    "topicId": "patterns",
+    "title": "Builder і Test Data Builder",
+    "subtitle": "",
+    "order": 3
+  },
+  {
+    "id": "pt-factory",
+    "topicId": "patterns",
+    "title": "Factory і фабрики даних",
+    "subtitle": "",
+    "order": 4
+  },
+  {
+    "id": "pt-facade",
+    "topicId": "patterns",
+    "title": "Facade, Steps і App Actions",
+    "subtitle": "",
+    "order": 5
+  },
+  {
+    "id": "pt-strategy",
+    "topicId": "patterns",
+    "title": "Strategy",
+    "subtitle": "",
+    "order": 6
+  },
+  {
+    "id": "pt-singleton",
+    "topicId": "patterns",
+    "title": "Singleton і глобальний стан",
+    "subtitle": "",
+    "order": 7
+  },
+  {
+    "id": "pt-screenplay",
+    "topicId": "patterns",
+    "title": "Screenplay: огляд",
+    "subtitle": "",
+    "order": 8
+  },
+  {
+    "id": "pt-principles",
+    "topicId": "patterns",
+    "title": "SOLID, DRY, KISS у тестах і антипатерни",
+    "subtitle": "",
+    "order": 9
+  }
+]

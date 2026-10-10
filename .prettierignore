@@ -1,0 +1,7 @@
+legacy/
+packages/content/data/
+node_modules/
+dist/
+coverage/
+package-lock.json
+apps/api/prisma/migrations/
