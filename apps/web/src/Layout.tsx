@@ -3,7 +3,16 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { currentStreak, levelFromXp, localDate, type ActivityResult } from '@qa-hub/shared';
 import { useAuth } from './auth/AuthProvider';
 import { useCatalog } from './hooks/content';
-import { BookIcon, DashIcon, FlameIcon, QuizIcon, RecallIcon, UserIcon } from './lib/icons';
+import {
+  BookIcon,
+  DashIcon,
+  FlameIcon,
+  HelpIcon,
+  LogoutIcon,
+  QuizIcon,
+  RecallIcon,
+  UserIcon,
+} from './lib/icons';
 import { useNow } from './lib/stores';
 import { Toasts, useActivityToasts } from './lib/toasts';
 import { useProgress, useStore } from './progress/ProgressProvider';
@@ -69,8 +78,24 @@ function ProfileLink() {
   );
 }
 
-function Account() {
+function LogoutButton() {
   const { state, logout } = useAuth();
+  if (state.status !== 'user') return null;
+  return (
+    <button
+      type="button"
+      className="iconbtn"
+      aria-label="Вийти"
+      title="Вийти з акаунта"
+      onClick={() => void logout()}
+    >
+      <LogoutIcon />
+    </button>
+  );
+}
+
+function Account() {
+  const { state } = useAuth();
   const { pathname } = useLocation();
   if (state.status !== 'user') {
     if (pathname === '/login' || pathname === '/register') return null;
@@ -91,10 +116,7 @@ function Account() {
       <span className="dot ok" aria-hidden />
       <span>
         Привіт, <Link to="/profile">{state.user.displayName}</Link> · прогрес зберігається в акаунті
-        ({state.user.email}).{' '}
-        <button type="button" className="linkbtn" onClick={() => void logout()}>
-          Вийти
-        </button>
+        ({state.user.email}).
       </span>
     </p>
   );
@@ -116,7 +138,8 @@ export function Layout() {
       <header className="topbar">
         <div className="topbar-in">
           <Link to="/dash" className="logo" aria-label="QA Interview Hub: дашборд">
-            qa-hub<span>$</span>_
+            qa<span className="full">-hub</span>
+            <span className="dollar">$</span>_
           </Link>
           <nav className="views" aria-label="Розділи">
             {VIEWS.map((v) => (
@@ -133,7 +156,17 @@ export function Layout() {
           <div className="me">
             <LevelChip />
             <Streak />
+            <NavLink
+              to="/tutorial"
+              className="tutbtn"
+              aria-label="Tutorial"
+              title="Як користуватися"
+            >
+              <HelpIcon />
+              <span className="lbl">Tutorial</span>
+            </NavLink>
             <ProfileLink />
+            <LogoutButton />
           </div>
         </div>
       </header>
@@ -143,21 +176,54 @@ export function Layout() {
         <main>
           <Outlet />
         </main>
-        <footer>
-          <span className="note keys">
-            {section === 'quiz'
-              ? '1–4 відповідь · S або 0 пропуск · Enter далі'
-              : section === 'recall'
-                ? 'Пробіл показати відповідь · 1–5 оцінка'
-                : ''}
-          </span>
-          <span className="note">
-            <Link to="/import">Перенести прогрес зі старої версії</Link> ·{' '}
-            <a href={`${import.meta.env.BASE_URL}privacy.html`}>Конфіденційність</a>
-          </span>
-        </footer>
       </div>
+      <Footer section={section} />
       <Toasts />
     </>
+  );
+}
+
+const BASE = import.meta.env.BASE_URL;
+
+function Footer({ section }: { section: string }) {
+  const keys =
+    section === 'quiz'
+      ? '1–4 відповідь · S або 0 пропуск · Enter далі'
+      : section === 'recall'
+        ? 'Пробіл показати відповідь · 1–5 оцінка'
+        : null;
+  return (
+    <footer className="site-footer">
+      <div className="footer-in">
+        <div className="footer-brand">
+          <Link to="/dash" className="logo">
+            qa-hub<span className="dollar">$</span>_
+          </Link>
+          <p className="note">
+            Тести, Active Recall і база знань для співбесіди Senior QA Automation.
+          </p>
+          {keys && (
+            <p className="keys">
+              <span className="kbd">Клавіші</span> {keys}
+            </p>
+          )}
+        </div>
+        <nav className="footer-col" aria-label="Навчання">
+          <h3>Навчання</h3>
+          <Link to="/dash">Дашборд</Link>
+          <Link to="/quiz">Тести</Link>
+          <Link to="/recall">Active Recall</Link>
+          <Link to="/kb">База знань</Link>
+          <Link to="/tutorial">Tutorial</Link>
+        </nav>
+        <nav className="footer-col" aria-label="Акаунт">
+          <h3>Акаунт</h3>
+          <Link to="/profile">Профіль</Link>
+          <Link to="/import">Перенести прогрес</Link>
+          <a href={BASE + 'legacy/'}>Стара версія сайту</a>
+          <a href={BASE + 'privacy.html'}>Конфіденційність</a>
+        </nav>
+      </div>
+    </footer>
   );
 }

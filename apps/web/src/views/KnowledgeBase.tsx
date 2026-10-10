@@ -9,6 +9,7 @@ import {
   type CatalogIndex,
 } from '../hooks/content';
 import { createStore } from '../lib/stores';
+import { TopicIcon } from '../lib/topic-icons';
 import { LoadError, Loading } from '../lib/ui';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 
@@ -56,7 +57,10 @@ export function KnowledgeBase() {
       <nav className="side" aria-label="Розділи бази знань">
         {idx.catalog.topics.map((t) => (
           <details key={t.id} open={chapter?.topicId === t.id}>
-            <summary>{t.name}</summary>
+            <summary>
+              <TopicIcon id={t.id} size={16} />
+              {t.name}
+            </summary>
             {(idx.chaptersByTopic.get(t.id) ?? []).map((ch) => (
               <Link
                 key={ch.id}

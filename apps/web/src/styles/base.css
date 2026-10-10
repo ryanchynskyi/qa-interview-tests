@@ -504,20 +504,6 @@ th {
 .cmp p {
   margin: 6px 0 0;
 }
-footer {
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-footer .note {
-  font-family: var(--mono);
-  font-size: 12px;
-}
 .fbtns {
   display: flex;
   gap: 8px;
