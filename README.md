@@ -49,3 +49,29 @@ If you prefer Docker: `docker compose up -d db` instead of `npm run db:start`; s
 
 Question and card ids are FNV-1a hashes of their text, identical to the legacy app, so progress
 exported from the old page can be imported later.
+
+## API
+
+| Endpoint                      | Notes                                                          |
+| ----------------------------- | -------------------------------------------------------------- |
+| `GET /health`                 | DB check + content counts                                      |
+| `GET /content/catalog`        | Topics, sections, chapters and a question/card index (no text) |
+| `GET /sections/:id/questions` | Questions **without** the correct option or explanation        |
+| `POST /quiz/check`            | `{questionId, choice}` → outcome, correct index, explanation   |
+| `GET /recall/cards`           | Recall cards with model answers                                |
+| `GET /kb/chapters/:id`        | Chapter with article HTML                                      |
+| `GET /kb/search?q=`           | All words must match; title hits rank first                    |
+
+Answers are checked on the server, so the correct option never ships with a question.
+
+## Progress and guest mode
+
+Without an account, progress lives in `localStorage` (`qa-hub-guest-v1`) and runs through the shared
+engine in `packages/shared/src/engine`: XP, levels, streaks and three daily tasks that reset at local
+midnight. The same engine will run on the server for signed-in users.
+
+## Tests
+
+`npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.
+Locally they use `TEST_DATABASE_URL` from `apps/api/.env` (read-only); without it they are skipped.
+CI runs them against a Postgres service.

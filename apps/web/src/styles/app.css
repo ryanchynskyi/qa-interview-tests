@@ -1,0 +1,42 @@
+/* Additions on top of the legacy stylesheet. */
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lvlchip {
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lvlchip b {
+  font: 600 15px var(--display);
+  color: var(--fg);
+}
+.lvlchip .lvlbar {
+  height: 6px;
+}
+.guest {
+  font-size: 13px;
+  color: var(--muted);
+  margin: -6px 0 14px;
+}
+.err {
+  color: var(--bad);
+  font-size: 14px;
+  margin-top: 10px;
+}
+.xpgain {
+  font: 600 13px var(--mono);
+  color: var(--ok);
+  margin-left: 8px;
+}

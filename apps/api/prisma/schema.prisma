@@ -58,6 +58,11 @@ model Article {
   kind      String
   level     Level?
   html      String
+  /// Plain text of `html`, for search snippets.
+  text      String  @default("")
+  /// Lowercased title + text. Lowercased in JS, because Postgres lower()/ILIKE only
+  /// folds ASCII under the C locale used by the dev cluster.
+  search    String  @default("")
   order     Int
   chapter   Chapter @relation(fields: [chapterId], references: [id])
 

@@ -48,6 +48,19 @@ describe('extracted content', () => {
     }
   });
 
+  it('does not leak the answer through option position', () => {
+    const byIndex = [0, 0, 0, 0];
+    for (const q of c.questions) byIndex[q.correctIndex]!++;
+    // Roughly uniform over 4 positions: every position holds at least 15% of answers.
+    for (const n of byIndex) expect(n / c.questions.length).toBeGreaterThan(0.15);
+  });
+
+  it('keeps the "code is correct" option last', () => {
+    for (const q of c.questions.filter((q) => q.options.includes(OK_TEXT))) {
+      expect(q.options.at(-1)).toBe(OK_TEXT);
+    }
+  });
+
   it('only uses the "code is correct" option in code-review sections', () => {
     const withOk = c.questions.filter((q) => q.options.includes(OK_TEXT));
     expect(withOk.every((q) => q.sectionId === 'pwfix' || q.sectionId === 'tsfix')).toBe(true);

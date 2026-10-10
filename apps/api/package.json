@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^11.2.1",
     "@prisma/client": "^6.16.0",
     "@qa-hub/content": "*",
     "@qa-hub/shared": "*",
