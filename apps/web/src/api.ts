@@ -30,6 +30,12 @@ export class HttpError extends Error {
   }
 }
 
+/** Full-page navigation target that starts Google sign-in (the API redirects to Google). */
+export function googleSignInUrl(next: string): string {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  return `${BASE}/auth/google?next=${encodeURIComponent(next)}&tz=${encodeURIComponent(tz)}`;
+}
+
 /* ---------- session token (memory only; the refresh token is an httpOnly cookie) ---------- */
 
 let accessToken: string | null = null;
@@ -55,6 +61,8 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<T> {
 /**
  * Exchanges the refresh cookie for a new access token. Single-flight: concurrent
  * callers share one request, since each refresh rotates the cookie.
+ * Resolves null only when the server says the session is over (401); a network
+ * failure or a restarting API rejects instead, so a blip never signs anyone out.
  */
 export function refreshSession(): Promise<AuthResponse | null> {
   refreshing ??= (async () => {
@@ -63,7 +71,8 @@ export function refreshSession(): Promise<AuthResponse | null> {
       accessToken = session.accessToken;
       onSessionChange(session);
       return session;
-    } catch {
+    } catch (e) {
+      if (!(e instanceof HttpError) || e.status !== 401) throw e;
       accessToken = null;
       onSessionChange(null);
       return null;
@@ -107,6 +116,7 @@ export const api = {
     raw<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => raw<void>('/auth/logout', { method: 'POST' }),
   me: () => request<AuthUser>('/auth/me'),
+  providers: () => request<{ google: boolean }>('/auth/providers'),
 
   /* signed-in progress */
   progress: () => request<PlayerProgress>('/me/progress'),

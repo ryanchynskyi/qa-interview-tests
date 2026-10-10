@@ -115,8 +115,10 @@ model User {
   id                String    @id @default(uuid())
   /// Stored lowercased and trimmed.
   email             String    @unique
-  /// Null for accounts created through Google sign-in (M5).
+  /// Null for accounts created through Google sign-in.
   passwordHash      String?
+  /// True once a provider (Google) has vouched for this email.
+  emailVerified     Boolean   @default(false)
   displayName       String
   /// IANA zone; daily tasks reset at local midnight here.
   timeZone          String
@@ -125,6 +127,7 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   refreshTokens  RefreshToken[]
+  oauthAccounts  OAuthAccount[]
   stats          UserStats?
   questionStates QuestionState[]
   cardStates     CardState[]
@@ -132,6 +135,20 @@ model User {
   quizAttempts   QuizAttempt[]
   xpEvents       XpEvent[]
   dailyTasks     DailyTask[]
+}
+
+/// A sign-in identity from an external provider, linked to one user.
+model OAuthAccount {
+  provider       String
+  /// The provider's stable user id (Google "sub"), not the email.
+  providerUserId String
+  userId         String
+  email          String
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerUserId])
+  @@index([userId])
 }
 
 /// Opaque refresh tokens, stored hashed. Rotated on every use; a token reused after

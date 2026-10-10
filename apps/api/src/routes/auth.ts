@@ -1,21 +1,8 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { hash, verify } from '@node-rs/argon2';
-import { randomUUID } from 'node:crypto';
-import {
-  isValidTimeZone,
-  loginSchema,
-  registerSchema,
-  updateMeSchema,
-  type AuthResponse,
-  type AuthUser,
-} from '@qa-hub/shared';
-import {
-  hashToken,
-  newRefreshToken,
-  REFRESH_COOKIE,
-  REFRESH_TTL_DAYS,
-  signAccessToken,
-} from '../auth/tokens';
+import { isValidTimeZone, loginSchema, registerSchema, updateMeSchema } from '@qa-hub/shared';
+import { clearSessionCookie, issueSession, toAuthUser } from '../auth/session';
+import { hashToken, REFRESH_COOKIE } from '../auth/tokens';
 import { HttpError, unauthorized } from '../lib/errors';
 
 const DAY_MS = 86_400_000;
@@ -27,51 +14,14 @@ const TZ_CHANGE_COOLDOWN_MS = DAY_MS;
 // Verifying against a real hash when the email is unknown keeps response times uniform.
 const DUMMY_HASH = hash('not-a-real-password-just-for-timing');
 
-const toAuthUser = (u: {
-  id: string;
-  email: string;
-  displayName: string;
-  timeZone: string;
-}): AuthUser => ({
-  id: u.id,
-  email: u.email,
-  displayName: u.displayName,
-  timeZone: u.timeZone,
-});
-
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const authLimit = { rateLimit: { max: app.auth.rateLimit, timeWindow: '1 minute' } };
-  const cookieOptions = {
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    secure: app.auth.cookieSecure,
-    path: '/',
-  };
-
-  /** New refresh token (same family on rotation) + access token, cookie set on the reply. */
-  async function issueSession(
+  const issue = (
     reply: FastifyReply,
-    user: { id: string; email: string; displayName: string; timeZone: string },
-    familyId: string = randomUUID(),
-  ): Promise<AuthResponse> {
-    const now = app.now();
-    const token = newRefreshToken();
-    await app.db.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: hashToken(token),
-        familyId,
-        expiresAt: new Date(now + REFRESH_TTL_DAYS * DAY_MS),
-      },
-    });
-    reply.setCookie(REFRESH_COOKIE, token, { ...cookieOptions, maxAge: REFRESH_TTL_DAYS * 86_400 });
-    return {
-      accessToken: await signAccessToken(user.id, app.auth.jwtSecret, now),
-      user: toAuthUser(user),
-    };
-  }
-
-  const clearCookie = (reply: FastifyReply) => reply.clearCookie(REFRESH_COOKIE, cookieOptions);
+    user: Parameters<typeof issueSession>[2],
+    familyId?: string,
+  ) => issueSession(app, reply, user, familyId);
+  const clearCookie = (reply: FastifyReply) => clearSessionCookie(app, reply);
 
   app.post('/auth/register', { config: authLimit }, async (req, reply) => {
     const body = registerSchema.parse(req.body);
@@ -89,7 +39,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         stats: { create: {} },
       },
     });
-    const session = await issueSession(reply, user);
+    const session = await issue(reply, user);
     return reply.code(201).send(session);
   });
 
@@ -100,7 +50,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     if (!user || !user.passwordHash || !ok) {
       throw new HttpError(401, 'invalid_credentials', 'Невірний email або пароль');
     }
-    return issueSession(reply, user);
+    return issue(reply, user);
   });
 
   app.post(
@@ -140,7 +90,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         data: { revokedAt: new Date(now) },
       });
       if (!count) throw unauthorized('Сесія закінчилась');
-      return issueSession(reply, row.user, row.familyId);
+      return issue(reply, row.user, row.familyId);
     },
   );
 

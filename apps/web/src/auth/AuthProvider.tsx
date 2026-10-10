@@ -20,8 +20,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Any session change (refresh, expiry) flows through here.
     onSession((s) => setState(s ? { status: 'user', user: s.user } : { status: 'guest' }));
-    // Restore the session from the httpOnly refresh cookie, if there is one.
-    void refreshSession();
+    // Restore the session from the httpOnly refresh cookie, if there is one. If the API
+    // can't be reached at all, continue as a guest; nothing on the server is lost.
+    refreshSession().catch(() => setState({ status: 'guest' }));
   }, []);
 
   const start = (s: AuthResponse) => {

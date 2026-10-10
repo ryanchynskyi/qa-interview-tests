@@ -83,6 +83,17 @@ progress writes lock the user's row, so parallel requests can't double-count XP.
 
 `JWT_SECRET` (32+ chars) is required; see `.env.example`.
 
+### Google sign-in (optional)
+
+Authorization-code flow with PKCE, handled by the API; the browser never sees Google's tokens.
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI` in `apps/api/.env`
+(create a "Web application" client under Google Auth Platform → Clients; for local dev the redirect
+URI is `http://localhost:5173/api/auth/google/callback`). Without them the button is hidden.
+
+A Google account signs into the user with the same verified email. If that user registered with a
+password but never verified the email, the password and its sessions are dropped on linking, since
+whoever set them may not own the address.
+
 ## Tests
 
 `npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.

@@ -6,6 +6,12 @@ const envSchema = z.object({
   HOST: z.string().default('127.0.0.1'), // set HOST=0.0.0.0 inside containers
   DATABASE_URL: z.string().url(),
   WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
+  /** Full URL of the web app (e.g. a GitHub Pages path); defaults to WEB_ORIGIN + '/'. */
+  WEB_APP_URL: z.string().url().optional(),
+  /** Google sign-in; all three or none. */
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
   /** HMAC key for access tokens. Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))" */
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   /** Defaults to true in production; refresh cookies are then HTTPS-only. */

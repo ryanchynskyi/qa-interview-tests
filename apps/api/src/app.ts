@@ -5,11 +5,13 @@ import rateLimit from '@fastify/rate-limit';
 import type { PrismaClient } from '@prisma/client';
 import type { Catalog } from '@qa-hub/shared';
 import { ZodError } from 'zod';
+import type { GoogleOAuth } from './auth/google';
 import { verifyAccessToken } from './auth/tokens';
 import { catalogCache } from './content/catalog';
 import { HttpError, unauthorized } from './lib/errors';
 import { ProgressService } from './progress/service';
 import { authRoutes } from './routes/auth';
+import { googleRoutes } from './routes/google';
 import { contentRoutes } from './routes/content';
 import { healthRoutes } from './routes/health';
 import { kbRoutes } from './routes/kb';
@@ -24,6 +26,10 @@ declare module 'fastify' {
     auth: { jwtSecret: string; cookieSecure: boolean; rateLimit: number };
     catalog: () => Promise<Catalog>;
     progress: ProgressService;
+    /** Null when GOOGLE_* isn't configured. */
+    google: GoogleOAuth | null;
+    /** Where the web app lives; OAuth callbacks redirect here (+ #/route). */
+    webAppUrl: string;
     /** User id from a valid Bearer token, null without one; 401 for an invalid token. */
     optionalUser: (req: FastifyRequest) => Promise<string | null>;
     /** User id from a valid Bearer token, else a 401. */
@@ -39,6 +45,9 @@ export interface AppDeps {
   now?: () => number;
   /** Register/login attempts per IP per minute (tests raise it). */
   authRateLimit?: number;
+  google?: GoogleOAuth | null;
+  /** Defaults to `${webOrigin}/`. */
+  webAppUrl?: string;
   logger?: FastifyServerOptions['logger'];
 }
 
@@ -53,6 +62,8 @@ export async function buildApp({
   cookieSecure = false,
   now = Date.now,
   authRateLimit = 10,
+  google = null,
+  webAppUrl = `${webOrigin}/`,
   logger = false,
 }: AppDeps) {
   const app = Fastify({ logger });
@@ -62,6 +73,8 @@ export async function buildApp({
   app.decorate('auth', { jwtSecret, cookieSecure, rateLimit: authRateLimit });
   app.decorate('catalog', catalogCache(db));
   app.decorate('progress', new ProgressService(db, app.catalog, now));
+  app.decorate('google', google);
+  app.decorate('webAppUrl', webAppUrl);
 
   const bearer = (req: FastifyRequest) => {
     const h = req.headers.authorization;
@@ -113,6 +126,7 @@ export async function buildApp({
   await app.register(quizRoutes);
   await app.register(kbRoutes);
   await app.register(authRoutes);
+  await app.register(googleRoutes);
   await app.register(meRoutes);
 
   return app;

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { buildApp } from './app';
+import { createGoogleOAuth } from './auth/google';
 import { loadConfig } from './config';
 
 const config = loadConfig();
@@ -9,6 +10,15 @@ const app = await buildApp({
   webOrigin: config.WEB_ORIGIN,
   jwtSecret: config.JWT_SECRET,
   cookieSecure: config.cookieSecure,
+  webAppUrl: config.WEB_APP_URL,
+  google:
+    config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_REDIRECT_URI
+      ? createGoogleOAuth({
+          clientId: config.GOOGLE_CLIENT_ID,
+          clientSecret: config.GOOGLE_CLIENT_SECRET,
+          redirectUri: config.GOOGLE_REDIRECT_URI,
+        })
+      : null,
   logger: config.NODE_ENV === 'development' ? { level: 'info' } : true,
 });
 
