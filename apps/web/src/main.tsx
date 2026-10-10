@@ -20,6 +20,7 @@ const views = {
   googleDone: () => import('./views/AuthPage').then((m) => ({ Component: m.GoogleDone })),
   import: () => import('./views/ImportPage').then((m) => ({ Component: m.ImportPage })),
   profile: () => import('./views/Profile').then((m) => ({ Component: m.Profile })),
+  tutorial: () => import('./views/Tutorial').then((m) => ({ Component: m.Tutorial })),
 };
 
 // Hash routes keep the legacy URLs (#/quiz/sql, #/kb/sql/sq-0/2) working and need no server rewrites.
@@ -38,6 +39,7 @@ const router = createHashRouter([
       { path: 'auth/google', lazy: views.googleDone },
       { path: 'import', lazy: views.import },
       { path: 'profile', lazy: views.profile },
+      { path: 'tutorial', lazy: views.tutorial },
       { path: '*', element: <Navigate to="/dash" replace /> },
     ],
   },

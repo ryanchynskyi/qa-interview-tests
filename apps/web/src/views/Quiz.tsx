@@ -14,6 +14,7 @@ import {
   type CatalogIndex,
 } from '../hooks/content';
 import { Chip, Fmt, LoadError, Loading, shuffled, useKeydown } from '../lib/ui';
+import { TopicIcon } from '../lib/topic-icons';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 
 /* ---------- per-section session state (kept while switching tabs, like the legacy page) ---------- */
@@ -123,7 +124,10 @@ function SectionTabs({ idx, current }: { idx: CatalogIndex; current: string }) {
             <small className="desc">
               {s.description} · {st.n}
             </small>
-            <b>{s.name}</b>
+            <b className="tname">
+              <TopicIcon id={s.id} size={16} />
+              {s.name}
+            </b>
             <small>
               {st.y} з {st.n} правильно
             </small>

@@ -1,12 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { chapterScores, topicBadge, topicSkills, WEAK_THRESHOLD } from '@qa-hub/shared';
 import { useCatalog, useCatalogIndex } from '../hooks/content';
 import { PlayIcon } from '../lib/icons';
 import { useNow } from '../lib/stores';
+import { TopicIcon } from '../lib/topic-icons';
 import { LoadError, Loading, pct, scoreColor } from '../lib/ui';
 import { useSkillProgress } from '../progress/ProgressProvider';
 import { TodayCard } from './TodayCard';
+
+/** Weak chapters shown before "show all": keeps the card level with Today. */
+const WEAK_VISIBLE = 4;
 
 const BADGE_LABEL = { gold: 'Золото', silver: 'Срібло', bronze: 'Бронза' } as const;
 
@@ -26,6 +30,7 @@ export function Dashboard() {
   const idx = useCatalogIndex(catalog);
   const progress = useSkillProgress();
   const now = useNow();
+  const [allWeak, setAllWeak] = useState(false);
 
   const view = useMemo(() => {
     if (!catalog) return null;
@@ -89,34 +94,46 @@ export function Dashboard() {
             {view.weak.length > 0 && <span className="count">{view.weak.length} failing</span>}
           </h2>
           {view.weak.length ? (
-            <ul className="wl">
-              {view.weak.map((x) => {
-                const bits: string[] = [];
-                if (x.quiz.answered) bits.push(`тести ${x.quiz.correct}/${x.quiz.answered}`);
-                if (x.recall.rated) bits.push(`recall ${x.recall.avg.toFixed(1)} з 5`);
-                return (
-                  <li className="wi" key={x.chapterId}>
-                    <span className="mark" style={{ color: scoreColor(x.score) }}>
-                      ✗ {pct(x.score)}
-                    </span>
-                    <span className="t">{idx.chapter.get(x.chapterId)?.title}</span>
-                    <span className="s">
-                      {idx.topicName.get(x.topicId)} · {bits.join(' · ')}
-                    </span>
-                    <span className="b">
-                      <Link className="btn sm" to={`/kb/${x.topicId}/${x.chapterId}`}>
-                        Теорія
-                      </Link>
-                      {view.chaptersWithCards.has(x.chapterId) && (
-                        <Link className="btn sm" to={`/recall/ch/${x.chapterId}`}>
-                          Recall
+            <>
+              <ul className="wl">
+                {(allWeak ? view.weak : view.weak.slice(0, WEAK_VISIBLE)).map((x) => {
+                  const bits: string[] = [];
+                  if (x.quiz.answered) bits.push(`тести ${x.quiz.correct}/${x.quiz.answered}`);
+                  if (x.recall.rated) bits.push(`recall ${x.recall.avg.toFixed(1)} з 5`);
+                  return (
+                    <li className="wi" key={x.chapterId}>
+                      <span className="mark" style={{ color: scoreColor(x.score) }}>
+                        ✗ {pct(x.score)}
+                      </span>
+                      <span className="t">{idx.chapter.get(x.chapterId)?.title}</span>
+                      <span className="s">
+                        {idx.topicName.get(x.topicId)} · {bits.join(' · ')}
+                      </span>
+                      <span className="b">
+                        <Link className="btn sm" to={`/kb/${x.topicId}/${x.chapterId}`}>
+                          Теорія
                         </Link>
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                        {view.chaptersWithCards.has(x.chapterId) && (
+                          <Link className="btn sm" to={`/recall/ch/${x.chapterId}`}>
+                            Recall
+                          </Link>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {view.weak.length > WEAK_VISIBLE && (
+                <button
+                  type="button"
+                  className="btn sm ghost morebtn"
+                  aria-expanded={allWeak}
+                  onClick={() => setAllWeak((v) => !v)}
+                >
+                  {allWeak ? 'Згорнути' : `Показати всі (${view.weak.length})`}
+                </button>
+              )}
+            </>
           ) : (
             <p className="note">
               <span className="mono ok">0 failing.</span> Список зʼявиться, коли пройдеш тести або
@@ -146,6 +163,9 @@ export function Dashboard() {
           return (
             <div className="spec" key={s.topicId} data-testid={`skill-${s.topicId}`}>
               <span className="nm">
+                <span className="ibox">
+                  <TopicIcon id={s.topicId} />
+                </span>
                 <b>{s.topicId}.spec</b>
                 <small>{idx.topicName.get(s.topicId)}</small>
               </span>
