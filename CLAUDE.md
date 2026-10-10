@@ -122,7 +122,7 @@ servers that are already up: stop them after changing API code.
 
 Done: M1 monorepo + content, M2 engine, M3 content API + guest mode, M4 email/password + server
 progress, M5 Google sign-in, M6 progress import, M7 daily-task card, streaks, toasts, badges,
-profile page. Pending user confirmation: real Google sign-in in their own browser.
+profile page. M8 done: e2e, bundle split, hosting, Google sign-in live in production.
 
 M8 — tests and deployment:
 
@@ -136,5 +136,7 @@ M8 — tests and deployment:
    refresh cookie lands in the partitioned jar. Rate limits key on `CLIENT_IP_HEADER=true-client-ip`:
    on Render, X-Forwarded-For keeps client-supplied entries plus Cloudflare and internal hops, so
    `TRUST_PROXY=1` saw rotating Cloudflare IPs and limits never triggered. Steps: README "Deploying".
-4. Google: add the production redirect URI, then publish the OAuth app.
+4. ~~Google~~ (published "In production"; Render `GOOGLE_REDIRECT_URI` must be the onrender.com
+   callback, not the localhost one from `apps/api/.env`). Privacy policy: `apps/web/public/privacy.html`;
+   update it when the app starts storing new kinds of data.
 5. ~~Pages via Actions, revert the revert, merge into `main`~~ (done in PR #3; legacy at `/legacy/`).
