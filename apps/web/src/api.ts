@@ -87,6 +87,25 @@ export function refreshSession(): Promise<AuthResponse | null> {
   return refreshing;
 }
 
+const googleExchanges = new Map<string, Promise<AuthResponse>>();
+
+/**
+ * Trades the Google callback's one-time code for a session. The code is single-use, so
+ * repeated calls (React StrictMode runs effects twice in dev) share the first request:
+ * a second redemption would get a 401 and could sign out the session the first one made.
+ */
+function googleExchange(code: string): Promise<AuthResponse> {
+  let p = googleExchanges.get(code);
+  if (!p) {
+    p = raw<AuthResponse>('/auth/google/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+    googleExchanges.set(code, p);
+  }
+  return p;
+}
+
 /** Like raw(), but an expired access token is refreshed once and the call retried. */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
@@ -119,8 +138,7 @@ export const api = {
   login: (body: LoginRequest) =>
     raw<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => raw<void>('/auth/logout', { method: 'POST' }),
-  googleExchange: (code: string) =>
-    raw<AuthResponse>('/auth/google/exchange', { method: 'POST', body: JSON.stringify({ code }) }),
+  googleExchange,
   me: () => request<AuthUser>('/auth/me'),
   providers: () => request<{ google: boolean }>('/auth/providers'),
 
