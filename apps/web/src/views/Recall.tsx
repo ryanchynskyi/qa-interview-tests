@@ -382,7 +382,7 @@ function SessionView({
           підводні камені.
         </p>
         {!s.shown ? (
-          <div className="actions">
+          <div className="actions qactions">
             <div className="left">
               <button type="button" className="btn primary" onClick={reveal}>
                 Показати відповідь

@@ -140,3 +140,26 @@ M8 — tests and deployment:
    callback, not the localhost one from `apps/api/.env`). Privacy policy: `apps/web/public/privacy.html`;
    update it when the app starts storing new kinds of data.
 5. ~~Pages via Actions, revert the revert, merge into `main`~~ (done in PR #3; legacy at `/legacy/`).
+
+## M9 — "Test Runner" redesign (done on `develop`, not merged yet)
+
+Direction A from the design canvas (https://claude.ai/artifact/QDQZngEZ7kn7WticxJnju9): dark, IDE-like,
+daily tasks read as a test-run report (PASS / RUN), topics as `*.spec` rows, weak chapters as failing.
+Tokens: bg `#0F1115`, surface `#171A21`, line `#262B35`, fg `#E6E8EC`, muted `#A9B1BF`, accent amber
+`#F5C451`, ok `#4ADE80`, bad `#FF8A5C`, warn `#FFB86B`, info `#7CC4FF`; JetBrains Mono for labels and
+numbers, IBM Plex Sans for text. Dark only. Mobile first: 16px gutters, touch targets ≥44px, inputs
+16px (no iOS zoom), bottom tab bar under 720px. Keep e2e selectors (test ids, `.opt`, `.verdict`,
+`.xpgain`, `details.art`, and the copy the specs assert). The streak pill reads "Серія: N дн.".
+
+Milestones, ordered so each step reskins as much as possible for the effort:
+
+1. ~~Tokens + base components~~ (done: `styles/base.css`, was `legacy.css`) (`styles/`): new palette and fonts, restyle the shared classes (`.btn`,
+   `.card`, `.chip`, `.opt`, `.tab`, `pre`, tables, forms, toasts). The whole app changes at once.
+2. ~~App shell~~ (`Layout.tsx`): top bar with logo, nav, level/XP, streak, profile; compact guest/account
+   line; bottom tab bar on mobile.
+3. ~~Dashboard~~: run header + "continue" CTA, Today card as a run report, failing chapters, topic
+   `*.spec` table that turns into cards on mobile.
+4. ~~Quiz~~: section picker, question card, options with PASS/FAIL marks, progress, results as a report;
+   sticky action bar on mobile.
+5. ~~Recall + Knowledge Base~~: card and rating buttons; KB sidebar → select on mobile, article styling.
+6. ~~Profile, Auth, Import~~, XP chart, toasts; final pass at 360/390/768/1280 px, contrast, e2e green.

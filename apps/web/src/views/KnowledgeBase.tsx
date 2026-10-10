@@ -12,6 +12,15 @@ import { createStore } from '../lib/stores';
 import { LoadError, Loading } from '../lib/ui';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 
+/**
+ * The article's level, if it has one. Guides carry it; the "KB Middle" notes take it from
+ * their source's name; theory and the Postman sheet have none.
+ */
+function articleLevel(a: { level?: string | null; kind: string }): string | null {
+  const level = a.level ?? (a.kind === 'KB Middle' ? 'middle' : null);
+  return level ? level[0]!.toUpperCase() + level.slice(1) : null;
+}
+
 /** Expanded article ids, kept while the tab stays open (legacy kbOpen). */
 const openedStore = createStore<ReadonlySet<string>>(new Set());
 
@@ -294,10 +303,7 @@ function ChapterView({
         >
           <summary>
             <span>{a.title}</span>
-            <span className="st">
-              {a.level ? `${a.level} · ` : ''}
-              {a.kind}
-            </span>
+            {articleLevel(a) && <span className="st">{articleLevel(a)}</span>}
           </summary>
           {/* Article HTML is our own seeded content, not user input. */}
           <div className="body" dangerouslySetInnerHTML={{ __html: a.html }} />
