@@ -39,6 +39,15 @@ describe('session refresh', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('redeems a Google login code once, however often it is asked to', async () => {
+    const fetchMock = vi.fn(async () => json(200, { accessToken: 'g', user: { id: 'u' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const [a, b] = await Promise.all([api.googleExchange('c1'), api.googleExchange('c1')]);
+    await api.googleExchange('c1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(a).toBe(b);
+  });
+
   it('retries a request once with a fresh token after a 401', async () => {
     setAccessToken('expired');
     const fetchMock = vi

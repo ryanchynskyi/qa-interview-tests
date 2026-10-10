@@ -120,7 +120,7 @@ function SectionTabs({ idx, current }: { idx: CatalogIndex; current: string }) {
             aria-selected={s.id === current}
             onClick={() => navigate(`/quiz/${s.id}`)}
           >
-            <small>
+            <small className="desc">
               {s.description} · {st.n}
             </small>
             <b>{s.name}</b>
@@ -454,8 +454,12 @@ function RunView({
       <ProgressBar run={run} />
       <div className="card" data-testid="question">
         <div className="meta">
-          <span className="tag">{q.group}</span>
-          <span className="lvl">{q.level}</span>
+          <span className="tag">
+            <span className="k">group:</span> {q.group}
+          </span>
+          <span className="lvl">
+            <span className="k">level:</span> {q.level}
+          </span>
         </div>
         <h2>
           <Fmt text={q.text} />
@@ -501,7 +505,7 @@ function RunView({
             <KbLink idx={idx} chapterId={q.chapterId} />
           </div>
         )}
-        <div className="actions">
+        <div className="actions qactions">
           {!a ? (
             <button
               type="button"
@@ -574,7 +578,18 @@ function Results({
           <span className="tag">Результат</span>
           {run.bonus > 0 && <span className="xpgain">+{run.bonus} XP бонус</span>}
         </div>
-        <div className="big">{pctDone}%</div>
+        <div
+          className="big"
+          style={{
+            color: pctDone >= 85 ? 'var(--ok)' : pctDone >= 65 ? 'var(--warn)' : 'var(--bad)',
+          }}
+        >
+          {pctDone}%
+        </div>
+        <p className="runline">
+          <span className="ok">{y} passed</span>, <span className="bad">{n - y} failed</span> ·
+          Tests: {n} total
+        </p>
         <p>
           {y} правильних з {n}. {verdict}
         </p>

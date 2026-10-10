@@ -16,7 +16,7 @@ function untilMidnight(ms: number): string {
   return h ? `${h} год ${min % 60} хв` : `${min} хв`;
 }
 
-/** Today's three tasks, the streak, and when the next set arrives (local midnight). */
+/** Today's three tasks as a test-run report, the streak, and when the next set arrives. */
 export function TodayCard({ catalog }: { catalog: Catalog }) {
   const { daily, stats, timeZone } = useProgress();
   const now = useNow(30_000);
@@ -24,20 +24,54 @@ export function TodayCard({ catalog }: { catalog: Catalog }) {
   if (!daily || daily.date !== today) return null;
 
   const done = daily.tasks.filter((t) => t.completedAt !== null).length;
+  const running = daily.tasks.filter((t) => t.completedAt === null && t.progress > 0).length;
   const streak = currentStreak(stats, today);
   const keptToday = stats.lastActiveDate === today;
 
   return (
     <section className="card today" data-testid="today">
-      <div className="head">
-        <h2 style={{ margin: 0 }}>
+      <div className="today-head">
+        <h2>
           Сьогодні: {done} з {daily.tasks.length}
         </h2>
-        <span className="note">
-          Нові завдання через {untilMidnight(msUntilNextLocalDay(now, timeZone))}
+        <span className="note mono">
+          reset через {untilMidnight(msUntilNextLocalDay(now, timeZone))}
         </span>
       </div>
-      <p className="note" style={{ margin: '6px 0 4px' }}>
+      <ul className="tasks">
+        {daily.tasks.map((t) => {
+          const view = describeTask(t, catalog);
+          const isDone = t.completedAt !== null;
+          const status = isDone ? 'pass' : t.progress > 0 ? 'run' : 'todo';
+          return (
+            <li className={`task ${status}`} key={t.id} data-testid="task">
+              <span className="st">{isDone ? '✓ PASS' : t.progress > 0 ? '◌ RUN' : '○ TODO'}</span>
+              <span className="t">{view.title}</span>
+              <span className="meta2">
+                {t.progress}/{t.target} · +{t.rewardXp} XP
+              </span>
+              <span className="lvlbar" aria-hidden>
+                <span style={{ width: `${(t.progress / t.target) * 100}%` }} />
+              </span>
+              {!isDone && (
+                <Link className="btn sm go" to={view.to}>
+                  Почати
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="runline">
+        <span className="ok">{done} passed</span>
+        {running > 0 && (
+          <>
+            , <span className="warn">{running} running</span>
+          </>
+        )}{' '}
+        · Tasks: {daily.tasks.length} total
+      </p>
+      <p className="note">
         {streak > 0
           ? keptToday
             ? `Серія ${streak} дн. поспіль: сьогодні вже зараховано.`
@@ -47,31 +81,6 @@ export function TodayCard({ catalog }: { catalog: Catalog }) {
           ? 'Усі завдання виконано!'
           : `За всі три: ще +${XP_RULES.dailyAllDone} XP бонусом.`}
       </p>
-      {daily.tasks.map((t) => {
-        const view = describeTask(t, catalog);
-        const isDone = t.completedAt !== null;
-        return (
-          <div className={`task${isDone ? ' done' : ''}`} key={t.id} data-testid="task">
-            <span className="t">{view.title}</span>
-            <div className="lvlbar" aria-hidden>
-              <span
-                style={{
-                  width: `${(t.progress / t.target) * 100}%`,
-                  background: isDone ? 'var(--ok)' : 'var(--accent)',
-                }}
-              />
-            </div>
-            <span className="meta2">
-              {t.progress} / {t.target} · +{t.rewardXp} XP{isDone ? ' · виконано' : ''}
-            </span>
-            {!isDone && (
-              <Link className="btn sm go" to={view.to}>
-                Почати
-              </Link>
-            )}
-          </div>
-        );
-      })}
     </section>
   );
 }

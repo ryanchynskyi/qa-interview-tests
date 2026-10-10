@@ -6,7 +6,7 @@ test('finishing a daily task starts a streak', async ({ page }) => {
   await page.goto('/#/dash');
   const today = page.getByTestId('today');
   await expect(today).toContainText('Сьогодні: 0 з 3');
-  await expect(page.getByTestId('streak')).toHaveText('Серії поки немає: виконай завдання дня');
+  await expect(page.getByTestId('streak')).toHaveText('Серія: 0 дн.');
 
   // Tasks are seeded per user and day. A new account always gets "read an article" or
   // "answer 10 questions" among its three, so do whichever is there.
@@ -24,7 +24,7 @@ test('finishing a daily task starts a streak', async ({ page }) => {
     await answerQuestions(page, 10);
   }
 
-  await expect(page.getByTestId('streak')).toHaveText('Серія: 1 дн. поспіль');
+  await expect(page.getByTestId('streak')).toHaveText('Серія: 1 дн.');
   await page.goto('/#/dash');
   await expect(today).toContainText(/Сьогодні: [123] з 3/);
   await expect(today).toContainText('сьогодні вже зараховано');
