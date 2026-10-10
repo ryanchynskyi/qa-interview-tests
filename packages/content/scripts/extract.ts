@@ -3,6 +3,7 @@
  * normalized content JSON to packages/content/data. Run: `npm run content:extract`.
  *
  * Legacy shapes: quiz[section][] = {t group, l level, q, c code, o options (o[0] correct), e}
+ *                (options are reshuffled on extraction; see arrangeOptions)
  *                kb[topic][] = {id, title, sub, arts: [{t, s kind, l?, h html}]}
  *                recall[topic][] = {t group, k chapterId, q, a}
  *                qmap[section][group] = chapterId
@@ -13,7 +14,10 @@ import { fileURLToPath } from 'node:url';
 import {
   cardId,
   contentBundleSchema,
+  createRng,
+  OK_TEXT,
   questionId,
+  shuffle,
   type Article,
   type Chapter,
   type ContentBundle,
@@ -114,21 +118,35 @@ for (const t of legacyTopics) {
   });
 }
 
+/**
+ * Legacy options always have the right answer first, which would leak it to anyone
+ * reading the API. Shuffle once, seeded by the question id (so re-extraction is
+ * stable), keeping the "code is correct" option last as the legacy UI shows it.
+ */
+function arrangeOptions(id: string, legacy: string[]) {
+  const rest = legacy.filter((o) => o !== OK_TEXT);
+  const options = shuffle(createRng(`options:${id}`), rest);
+  if (legacy.includes(OK_TEXT)) options.push(OK_TEXT);
+  return { options, correctIndex: options.indexOf(legacy[0]!) };
+}
+
 const questions: Question[] = [];
 for (const s of legacySections) {
   (data.quiz[s.id] ?? []).forEach((x, order) => {
     const chapterId = data.qmap[s.id]?.[x.t];
     if (!chapterId) throw new Error(`No chapter for ${s.id} / ${x.t}`);
+    const id = questionId(x.q, x.c ?? '');
+    const { options, correctIndex } = arrangeOptions(id, x.o);
     questions.push({
-      id: questionId(x.q, x.c ?? ''),
+      id,
       sectionId: s.id,
       chapterId,
       group: x.t,
       level: x.l,
       text: x.q,
       code: x.c ?? '',
-      options: x.o,
-      correctIndex: 0, // legacy convention: the first option is always the right one
+      options,
+      correctIndex,
       explanation: x.e,
       order,
     });

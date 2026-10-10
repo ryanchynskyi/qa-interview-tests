@@ -4,6 +4,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { loadContent } from '@qa-hub/content';
+import { htmlToText } from '../src/lib/text';
 
 const prisma = new PrismaClient();
 
@@ -28,9 +29,11 @@ async function main() {
   await inChunks(c.chapters, 100, (ch) =>
     prisma.chapter.upsert({ where: { id: ch.id }, create: ch, update: ch }),
   );
-  await inChunks(c.articles, 100, (a) =>
-    prisma.article.upsert({ where: { id: a.id }, create: a, update: a }),
-  );
+  await inChunks(c.articles, 100, (a) => {
+    const text = htmlToText(a.html);
+    const row = { ...a, text, search: `${a.title} ${text}`.toLowerCase() };
+    return prisma.article.upsert({ where: { id: a.id }, create: row, update: row });
+  });
   await inChunks(c.questions, 100, (q) =>
     prisma.question.upsert({ where: { id: q.id }, create: q, update: q }),
   );

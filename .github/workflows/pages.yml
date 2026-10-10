@@ -1,0 +1,47 @@
+name: Pages
+
+# Deploys the web app to GitHub Pages (https://ryanchynskyi.github.io/qa-interview-tests/) on every
+# push to main. The old single-page site stays reachable at /legacy/. Requires Settings → Pages →
+# Source: "GitHub Actions".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The API is on another site (Render); see README "Deploying".
+      - run: npm run build -w @qa-hub/web -- --base=/qa-interview-tests/
+        env:
+          VITE_API_URL: https://qa-hub-api.onrender.com
+      - run: mkdir -p apps/web/dist/legacy && cp legacy/index.html apps/web/dist/legacy/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
