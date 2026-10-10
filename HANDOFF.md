@@ -79,34 +79,22 @@ Content plumbing (milestone 2):
 - Tests: `packages/shared/test/translation.test.ts`, `apps/api/test/translation.test.ts`
   (database-backed, injects its own small overlay), `packages/content/test/translation.test.ts`.
 
-Translations (milestone 3, partial):
+Translations (milestone 3, DONE, 100% by `npm run content:check-en`, no problems):
 
-- `packages/content/data/en/topics.json`, `sections.json`, `chapters.json`, `groups.json`: 100%.
-- `packages/content/data/en/questions.json`: 81 of 704, the first 81 Playwright questions in
-  source order (section `playwright`, indexes 0–80).
-- `recall-cards.json` and `articles.json` do not exist yet (everything falls back to Ukrainian).
+- `packages/content/data/en/`: `topics`, `sections`, `chapters`, `groups` (names), `questions.json`
+  (704/704), `recall-cards.json` (166/166), `articles.json` (442/442).
+- All of it is machine-written by Claude and unreviewed by a native speaker.
+- Source-data defect: articles `cy-8:0` and `cy-8:1` lost the `$` in GitHub Actions expressions
+  (`DOLLAR{{ ... }}` in the Ukrainian source); the English overlay uses `${{ ... }}`.
 
 ## What is left, step by step
 
-1. **Questions** (623 left). Section by section in source order: the rest of `playwright`
-   (from index 81, 26 left), then `cypress` 107, `typescript` 100, `manual` 80, `sql` 65, `api` 65,
-   `sysdesign` 40, `patterns` 40, `pwfix` 50, `tsfix` 50. Entry format:
-   `{ "<id>": { "text", "options": [same count and order], "explanation", "code"? } }`. Add
-   `code` only when the source code contains Ukrainian (comments, UI strings), and keep those
-   strings consistent with the options (e.g. `'Delete'` in code and in the options). Keep every
-   inline `` `code` `` span. Keep the file in source order.
-2. **Recall cards** (166) → `data/en/recall-cards.json`: `{ "<id>": { "question", "answer" } }`.
-   Answers are spoken interview answers: keep that tone and every inline code span.
-3. **Articles** (442) → `data/en/articles.json`: `{ "<id>": { "title", "html" } }`. Translate the
-   text inside the HTML, keep the tags, attributes and `<pre>` blocks (code stays, Ukrainian
-   comments inside code may be translated). The largest part: about 66k words.
-4. After every batch: `npm run content:check-en` (must report no problems) and restart the API to
-   see it in the app (overlays load at start).
-5. **Final pass (milestone 4):** an e2e spec that switches to EN and checks the UI, a question and
-   its explanation, a recall card and KB search in English; an English privacy page (or a language
-   note in it); README section on localization; review English copy with a native speaker if
-   possible (all translations so far are machine-written by Claude, unreviewed).
-6. Commit, push `develop`, open the PR `develop → main` (no `gh`: use the prefilled compare link
+1. **Milestone 4 is done** except review: `e2e/english.spec.ts` (switch, quiz, recall card, KB
+   search in English), language note in `privacy.html`, README "Languages" section, `<html lang>`
+   follows the language. Left: have a native speaker review the English copy and content.
+2. After changing overlays: `npm run content:check-en` (must report no problems) and restart the
+   API to see it in the app (overlays load at start).
+3. Commit, push `develop`, open the PR `develop → main` (no `gh`: use the prefilled compare link
    from CLAUDE.md), merge with "Create a merge commit", then merge `main` back into `develop`.
 
 A practical workflow that worked: print a batch of source entries (id, text, options, explanation)

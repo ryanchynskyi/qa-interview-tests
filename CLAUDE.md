@@ -185,4 +185,4 @@ Permanent rules:
 - Shell heredocs and `node -e` with template literals lose backticks and `${…}` in Git Bash: write
   code and translation files with the file tools, not through the shell.
 
-Milestones: 1. UI i18n and switch (done). 2. Overlay, loader, validation, API `lang` (done). 3. Translate content (names done; questions 81/704; recall cards and articles not started). 4. Final pass: e2e for EN, privacy page in EN, README.
+Milestones: 1. UI i18n and switch (done). 2. Overlay, loader, validation, API `lang` (done). 3. Translate content (done: names, 704 questions, 166 recall cards, 442 articles; machine-written, native review pending). 4. Final pass: e2e for EN, privacy note, README (done).

@@ -1,0 +1,666 @@
+{
+  "8mic3b": {
+    "question": "Tell me how the Playwright runner executes tests and what happens to a worker after a test fails.",
+    "answer": "The main process collects the tests and distributes them between workers, and each worker is a separate Node.js process with its own browser. After a test fails, the worker is destroyed and a new one is started for the following tests, so that the broken state doesn't leak further. Because of this, `beforeAll` and worker fixtures may run again. That is why I don't keep shared state in module variables and don't rely on the order of tests."
+  },
+  "1uyi5m0": {
+    "question": "How do the playwright and @playwright/test packages differ, and why might tests fail to start after a version update?",
+    "answer": "`playwright` is an automation library without a runner, while `@playwright/test` is a full runner with fixtures, assertions, parallelism and reports. The browsers are tied to a specific package version, so after an update they must be reinstalled with `npx playwright install`, otherwise there is an error about a missing executable. On CI I install them with `--with-deps` or use the official Docker image of the same version."
+  },
+  "z09u6x": {
+    "question": "How would you test a chat between two users in a single test?",
+    "answer": "I create two separate contexts with `browser.newContext()`, each with its own storageState, because a context is a separate session with its own cookies. Two pages of one context would share a session, and the second user would overwrite the first. Alice sends a message on her page, and on Bob's page I check that it appeared. I always close manually created contexts, ideally in a fixture, so the teardown runs even when the test fails."
+  },
+  "17dzng7": {
+    "question": "How do you automatically catch JavaScript errors on a page during UI tests?",
+    "answer": "I subscribe to the `pageerror` event, which fires on unhandled exceptions, and to `console` with the type `error`. I collect the errors in an array and after the test check that it is empty. To avoid duplicating this in every test, I move the logic into an auto fixture. I filter out console errors from third-party scripts, such as analytics, because they are noisy."
+  },
+  "17c74wf": {
+    "question": "Why can getByRole with the name Save find two buttons, and how do you fix it?",
+    "answer": "By default `name` is matched as a case-insensitive substring, so the Save draft button is found too. In strict mode the action fails with an error about multiple elements. I add `exact: true` or use a regular expression such as `/^Save$/`. If there are several such buttons in different blocks, I narrow the scope with a chain from the container."
+  },
+  "16e9nbw": {
+    "question": "How do you find the Refund button in the table row of a specific invoice number? How does filter with has differ from chaining?",
+    "answer": "I find the row with `getByRole('row').filter({ hasText: 'INV-1042' })`, and then inside it I look for `getByRole('button', { name: 'Refund' })`. A chain returns the child element, while `filter({ has })` returns the outer element that has such a descendant. In other words, filter answers which row, and the chain answers what is in it. I don't use `nth` here, because it breaks when the sort order changes."
+  },
+  "lejx35": {
+    "question": "How do you wait for a payment to move to the PAID status on the backend if it isn't visible in the UI?",
+    "answer": "I use `expect.poll` with a function that queries the API and returns the status, followed by the matcher `toBe('PAID')`. Poll repeats the call at growing intervals until the condition is met or the timeout expires, so I give it a timeout that fits the real processing time. This is better than a loop with `waitForTimeout`, because the test doesn't wait longer than needed and gives a clear message on failure."
+  },
+  "1r81299": {
+    "question": "How do expect.poll and toPass differ, and what is the trap in toPass?",
+    "answer": "`expect.poll` repeats a function that returns a value and applies a single matcher to it. `toPass` repeats a whole block of code with actions and several assertions until it passes. The trap is that in `toPass` the default timeout is 0, meaning it doesn't take `expect.timeout` and retries until the test timeout. So I always give it a timeout, and I set short timeouts on the inner assertions."
+  },
+  "1qudj13": {
+    "question": "How do you verify a link that opens in a new tab?",
+    "answer": "First I create the promise `page.waitForEvent('popup')`, then I click the link, and only after that I await the promise. If you start listening after the click, the event may arrive earlier and the test hangs. The tab I get is an ordinary Page, so I then wait for it to load and check the URL with `toHaveURL`. If the tab is opened not by a specific page, I listen to `context.waitForEvent('page')`."
+  },
+  "15tfj4t": {
+    "question": "A test clicks Delete, a native confirm appears, but the deletion doesn't happen. Why?",
+    "answer": "By default Playwright automatically dismisses native dialogs, so confirm returns false and the deletion is cancelled. I register `page.once('dialog')` before the click, check the text with `dialog.message()` and call `dialog.accept()`. It is important that when a listener exists, the dialog must be closed inside it, otherwise the page hangs. For one expected dialog I use `once`, so the handler doesn't affect other steps."
+  },
+  "1ve3r2r": {
+    "question": "How would you make a unique test user for each worker?",
+    "answer": "I create a worker fixture with the option `scope: 'worker'` and use `workerInfo.workerIndex` in the email so workers don't conflict. The built-in `request` fixture has test scope, so in a worker fixture I create my own API context with `playwright.request.newContext()`. Before `use` I create the user, and after it I delete it and call `dispose`. It is important to remember that after a failure the worker restarts and the fixture will create the user again."
+  },
+  "1a13z48": {
+    "question": "Why use test.step, and why is serial mode dangerous?",
+    "answer": "`test.step` splits a test into business steps, so the report and trace show at which stage it failed, for example Place order. A step can return a value, and with `box: true` the error points to the step call, not to a line inside the helper. Serial mode runs tests sequentially, skips the rest on a failure, and on a retry restarts the whole group. So I avoid it and make tests independent by preparing data through the API."
+  },
+  "1cjl3ri": {
+    "question": "How do page.waitForResponse and page.route differ? How do you check that the front end sent the right payload?",
+    "answer": "`waitForResponse` and `waitForRequest` only observe real traffic, while `route` intercepts a request and lets you replace, change or abort it. To check the payload I create a `waitForRequest` promise with a predicate on the URL and method, click, and then check `request.postDataJSON()` with `toMatchObject`. This way I test the front end's contract without mocks and without interfering with the backend."
+  },
+  "7gsb2l": {
+    "question": "What does request.post return on a 500 response, and how do you account for that in API tests?",
+    "answer": "By default APIRequestContext doesn't throw on 4xx and 5xx, it just returns the response. This is convenient for negative tests where I expect, say, a 422. So I always check the status explicitly: `expect(response).toBeOK()` or `expect(response.status()).toBe(422)`. If I want any error to fail the call, for example in data preparation, I set `failOnStatusCode: true`."
+  },
+  "wnvf3g": {
+    "question": "Tests use a shared storageState and change profile settings in parallel. What are the problems and how do you solve them?",
+    "answer": "All workers act as one account, so tests overwrite each other's data and become flaky. I move to an account per worker: a worker fixture logs in a separate user using `parallelIndex` and saves the state to a separate file. I log in through the API, because it is faster. I also check the session TTL: if a run is longer than the token's lifetime, there will be 401s at the end."
+  },
+  "1i5yjwd": {
+    "question": "Why is a setup project better than globalSetup for login?",
+    "answer": "A setup project is made of ordinary tests, so it has the `page` and `request` fixtures, a trace, retries, and it shows up in the HTML report. `globalSetup` is just a function without any of that, and its failures are hard to debug on CI. I do the cleanup for a setup project with the `teardown` property. I leave `globalSetup` for infrastructure without a browser, such as DB migrations or checking that the environment is available."
+  },
+  "16mrftb": {
+    "question": "What timeouts exist in Playwright and what are their default values?",
+    "answer": "The test timeout is 30 seconds, and it includes beforeEach and test fixtures. The expect timeout is 5 seconds. Actions and navigation have no separate limit, they are bounded only by the test timeout. I set `actionTimeout` to about 10-15 seconds so a failure points to a specific action. On CI I add `globalTimeout` and `maxFailures`, so a hang or a downed environment doesn't eat hours of the runner."
+  },
+  "1u01eql": {
+    "question": "How would you set up Playwright in GitHub Actions on 4 machines with one report?",
+    "answer": "I use a matrix with four shards and `fail-fast: false`, and each job runs `npx playwright test --shard=N/4` with the blob reporter. The tests run in the official Docker image of the same version as the package. The blob reports are uploaded as artifacts even on failure, and a separate job merges them with `merge-reports` into one HTML. With `fullyParallel` the shards are balanced by tests, not by files."
+  },
+  "1a81l6": {
+    "question": "How do you systematically investigate a flaky test?",
+    "answer": "First I reproduce it with `--repeat-each=20`. Then I check isolation: I run it with one worker and with several, and separately from other tests, to find shared data or an order dependency. Next I compare the trace of a successful and a failed run. I classify the cause: the test, the data, the environment, or a real race condition in the application. Until it is fixed, the test goes into quarantine with a ticket and an owner."
+  },
+  "1n5no81": {
+    "question": "How would you test a session expiry warning after 15 minutes without waiting?",
+    "answer": "I use the Clock API: I call `page.clock.install` before navigation, open the page and fast-forward time with `page.clock.fastForward('14:00')`. Then I check that the dialog appeared, and fast-forward again to check the redirect to login. It is important that Clock controls time only in the browser, so I check the server-side session TTL separately, using a short TTL on the test environment."
+  },
+  "16jtcy7": {
+    "question": "How is the Cypress architecture built under the hood?",
+    "answer": "Cypress works as two processes. The first is a Node process: it launches the browser, passes all network traffic through itself as a proxy and does everything the browser can't, such as working with files or a database through cy.task. The second is the browser itself, where two iframes live in one tab: my test in one and the application in the other. That is why the test has direct access to the DOM. Between Node and the browser there is a WebSocket, and it is the proxy that lets you intercept requests with cy.intercept."
+  },
+  "14a3yk4": {
+    "question": "How do you combine Cypress with Promises and ordinary async code?",
+    "answer": "For a Promise there is cy.wrap: I wrap the Promise, Cypress waits for it in the queue and passes the value on. And code that must run in Node, such as database queries, I move into cy.task, which returns the result straight into the test. The main thing is not to mix the Cypress queue and await in one place, because the order of execution becomes unpredictable."
+  },
+  "20xrkf": {
+    "question": "A test is flaky on CI. How do you look for the cause in Cypress?",
+    "answer": "First I collect evidence: a screenshot on failure, video (it has to be turned on explicitly, because it has been off since version 13), and Test Replay if there is Cloud. Then I reproduce it: I run the spec dozens of times in a loop. Next I check the typical causes: hard cy.wait calls, actions before the API response, shared data, animations, an intercept registered after the action. Retries in runMode help to survive until the release, but they don't cure anything, so I investigate each such test."
+  },
+  "1jelfd2": {
+    "question": "How do you work with iframes, new tabs, and file downloads and uploads?",
+    "answer": "For an iframe I take the contentDocument body and wrap it in cy.wrap, or I use the cypress-iframe plugin, but an iframe from another domain is not accessible. Cypress doesn't support new tabs, so I remove target blank or check the href. For uploading files there is the built-in selectFile, and a downloaded file I verify with readFile in the downloads folder."
+  },
+  "l5xykk": {
+    "question": "Why must an intercept be set before the action, and what happens if there are several on one URL?",
+    "answer": "An intercept sees only the requests that happen after it is registered, so I always set it before visit or a click. Otherwise the request slips through and wait fails, which is a frequent cause of flakiness. If there are several intercepts on one URL, the last one defined fires first, and with times one I can build a scenario where an error comes first and then a success."
+  },
+  "nk10q6": {
+    "question": "How do you validate a response schema?",
+    "answer": "Checking individual fields misses changes you didn't foresee, for example when the backend changed a field's type. So I validate the whole response against a JSON schema: I add chai-json-schema, and I keep the schemas themselves in fixtures. That way the test fails immediately if the contract changed."
+  },
+  "3uczoy": {
+    "question": "How do you work with several domains through cy.origin?",
+    "answer": "For scenarios with another domain, such as an SSO login, there is cy.origin: the commands for the other domain are written inside that block. An important nuance is that variables from outside don't get in there, so I pass them explicitly through args. In practice I more often bypass the external login through the API and keep cy.origin for the single test that checks the flow itself."
+  },
+  "1qd7sm7": {
+    "question": "Page Object or App Actions: which do you choose?",
+    "answer": "I use Page Object: classes with methods for each page, so the locators are collected in one place and a test reads like a scenario. The Cypress team also suggests App Actions: controlling the application's state directly, without the UI. I combine both: I prepare state through the API, and I use Page Object for the actions the test really verifies. That is exactly how my framework was built on the project for \"Come Back Alive\"."
+  },
+  "8gn0uq": {
+    "question": "How do you parallelise Cypress tests?",
+    "answer": "On one machine Cypress runs specs sequentially, so parallelisation happens only across several machines. The official way is Cypress Cloud with the record and parallel flags, but it is paid. For free you can build a matrix in CI and split the specs with the cypress-split plugin. The unit of distribution is a spec file, so I keep specs small."
+  },
+  "pskij5": {
+    "question": "How would you migrate a project from Cypress to Playwright?",
+    "answer": "I wouldn't rewrite everything at once. New tests are written in Playwright, the old ones live alongside in CI and are moved gradually, starting with the critical and most unstable ones. I migrate the architecture, not the lines: Page Objects almost directly, but with async, custom commands become fixtures, cy.session becomes storageState, an intercept with an alias becomes waitForResponse. The main risks are two stacks at once and hidden dependencies between tests that surface in a parallel run. I measure success by stability, run speed and the fact that coverage didn't drop."
+  },
+  "1rkd68c": {
+    "question": "How does requestTimeout differ from responseTimeout?",
+    "answer": "They are two stages. requestTimeout is five seconds for the request to be sent at all, and if it runs out, the problem is usually in the test or the UI. responseTimeout is thirty seconds for the server's response, and that is already about the backend."
+  },
+  "1hhyhsj": {
+    "question": "What Node events does Cypress have, for example after:run?",
+    "answer": "These are run-level events that I register in setupNodeEvents. After:run fires after the whole run and receives the results, which is handy for reports or notifications. After:spec fires after each file, and before:browser:launch lets you configure the browser."
+  },
+  "1g83jco": {
+    "question": "How do e2e tests differ from component testing in Cypress?",
+    "answer": "An e2e test opens the whole application and walks through a scenario like a user. Component testing mounts a single component with cy.mount in a real browser, without the rest of the application and without a backend. It is much faster and convenient for checking different states of a component, while e2e remains for the key end-to-end scenarios."
+  },
+  "rb63ie": {
+    "question": "What is a subject and how do commands pass values along a chain?",
+    "answer": "A subject is the result that one command passes to the next one in the chain. For example, cy.get passes the found elements, its length passes a number, invoke text passes a string. Some commands start a new chain, like cy.get or cy.request, and others work with what came from the previous one, like find, click or should."
+  },
+  "16y8gd2": {
+    "question": "Queries, actions and assertions: what is the difference?",
+    "answer": "Queries are requests to the DOM: get, find, contains, its. They are repeated until the assertion after them passes. Assertions, should and and, are what trigger those repeats. Actions, click, type, select, wait for the element to become actionable but run once, because a repeated click could break the application's state."
+  },
+  "1ik2tp3": {
+    "question": "How do you narrow the search: within, eq, first, filter?",
+    "answer": "Within limits the search to one block: I find the right table row by text, and all the commands inside search only in it. Eq, first and last pick by index, but I use them only when the order really matters. Otherwise I narrow by content with contains or filter."
+  },
+  "u811h8": {
+    "question": "How do you replace or change a server response?",
+    "answer": "For simple cases I pass the response as the third argument: a fixture, a status code, a delay. That is how I check how the UI behaves on a five hundred error or on a slow network. If I need to change a real response precisely, I write a handler: I let the request through to the server with req.continue and change one field in the response."
+  },
+  "1fzcnjs": {
+    "question": "How do you combine API and UI in one test?",
+    "answer": "I create the needed data through the API in beforeEach, the test itself checks only the UI, and in afterEach I clean the data up through the API again. This is much faster and more stable than creating everything with clicks. I used a similar approach on a Playwright project, where test objects were deleted through the API after every test."
+  },
+  "13gef69": {
+    "question": "Why is programmatic login better than login through the UI?",
+    "answer": "If every test logs in through the form, it is slow, and a broken form fails the whole suite even though the tests check something else. So I log in through the API and cache the session with cy.session, and I verify the login form itself with one separate test."
+  },
+  "1ql0u7o": {
+    "question": "How do you configure different environments and environment variables?",
+    "answer": "I read variables through Cypress.env. Locally they live in cypress.env.json, which isn't committed, and on CI they are passed as environment variables with the CYPRESS_ prefix from the pipeline's secrets. I pick the environment with the env flag, and in setupNodeEvents I set the right baseUrl."
+  },
+  "11sckm5": {
+    "question": "What reports, screenshots and videos does Cypress give you?",
+    "answer": "On a failure in run mode a screenshot is taken automatically, and video has to be turned on explicitly, because it has been off since version thirteen. For HTML reports I use mochawesome, and if I need history and trends, Allure through allure-cypress. For CI systems there is JUnit XML."
+  },
+  "trqbwg": {
+    "question": "What are the key differences between Cypress and Playwright?",
+    "answer": "The fundamental difference: Cypress runs inside the browser, and Playwright drives it from outside. Everything else follows from that. Cypress has a command queue instead of async/await, one tab, parallelism only across machines and network interception through a proxy. Playwright has ordinary promises, multiple tabs and domains, isolated contexts, built-in workers and supports several languages. On the other hand, Cypress has very convenient debugging with time travel."
+  },
+  "8n06kz": {
+    "question": "How does any differ from unknown, and what do you use for an API response?",
+    "answer": "`any` turns off type checking completely and spreads further through the code, so errors surface only at runtime. `unknown` also accepts any value, but you can't use it without a check. For an API response body I take `unknown` and narrow the type with validation, for example a zod schema through `schema.parse`. In our framework `any` is forbidden by an ESLint rule."
+  },
+  "16n5gby": {
+    "question": "What is never and how do you apply it in practice?",
+    "answer": "`never` is a type with no values, and it is what a function that always throws returns. The most useful application is an exhaustive check in a `switch` over a union type: in the `default` branch I assign the value to a variable of type `never`. If the backend adds a new transaction status, for example `REVERSED`, and it is added to the type, the code won't compile until I handle the new case. That way a new state doesn't go unnoticed."
+  },
+  "xqv5e2": {
+    "question": "How does interface differ from type, and which do you choose?",
+    "answer": "For describing an object they are almost interchangeable. `type` can describe unions, tuples, functions, mapped and conditional types, while `interface` describes only an object's shape, but supports declaration merging and gives clearer errors with `extends`. I use `interface` for models and Page Object contracts, and `type` for unions and utilities. The main thing is one convention in the project."
+  },
+  "14rfc7m": {
+    "question": "What is the difference between the field `phone?: string` and `phone: string | undefined`? Why does it matter for API tests?",
+    "answer": "With `?` the field may be missing from the object entirely, while with `| undefined` the field is required, but its value may be `undefined`. For an API these are different contracts: a field that is always there and may be `null`, and a field that is sometimes absent. If the backend started omitting a required field, that is a regression, and my type and schema must catch it. So I describe models exactly by the contract, not in whatever way is more convenient."
+  },
+  "167iv5b": {
+    "question": "What is a discriminated union and where do you use it?",
+    "answer": "It is a union of types with a common literal field, for example `status: 'success'` or `status: 'error'`. When I check this field, TS narrows the whole object to the right branch, and in the success branch `data` is available, while in the error branch `error` is. I describe API responses and different payment types this way: card, IBAN, wallet. The advantage over a single type with a pile of optional fields is that invalid combinations simply don't compile."
+  },
+  "nuopf1": {
+    "question": "How do you write your own type guard and what are its risks?",
+    "answer": "A type guard is a function with a return type `value is Account`, and after `if (isAccount(x))` TS considers `x` an account. There is also an assertion function with `asserts value is T`, which throws and narrows the type further down the code. The risk is that the compiler doesn't check the logic inside the guard: if it is incomplete, the type will lie. So for API responses I prefer validation with a schema from which the type is derived."
+  },
+  "1rbeem3": {
+    "question": "How would you type the get method in an API client so it returns the right type for each endpoint?",
+    "answer": "The simplest is a generic `get<T>(path): Promise<T>`, and the call `client.get<Account>(...)` gives autocompletion. But that is only an assertion through `as T`, and nothing is checked at runtime. So in a mature framework I pass a zod schema into the method, and the result type is derived from it with `z.infer`. That way the type and the real data can't drift apart unnoticed."
+  },
+  "16872pa": {
+    "question": "Why do you need `K extends keyof T` in a generic function? Give an example.",
+    "answer": "It is a constraint saying that `K` is one of the keys of type `T`. For example, a helper `pluck(rows, 'amount')` returns the type `T[K][]`, that is `number[]`, and a typo `'amout'` won't compile. This is how I make type-safe helpers for working with SQL or API results. The general rule: a generic must connect input and output, otherwise it isn't needed."
+  },
+  "104gp3i": {
+    "question": "Which utility types do you use most often in a test framework?",
+    "answer": "`Partial` in test data factories: a base valid object plus `overrides: Partial<T>`, and the test changes only the important field. `Omit` to derive a request body type from a model without `id` and `createdAt`. `Pick` for short projections. `Record` over a union of keys for maps that must cover all variants, for example all currencies."
+  },
+  "1apy46h": {
+    "question": "How do you get the result type of an async function without describing it by hand?",
+    "answer": "I combine `ReturnType` and `Awaited`: `Awaited<ReturnType<typeof createTestUser>>`. `ReturnType` gives `Promise<User>`, and `Awaited` unwraps the promise. Similarly `Parameters<typeof fn>` gives a tuple of arguments, which is handy for wrappers with logging. But for API contracts I take the types from OpenAPI, because deriving them from the implementation would adjust the type to the bug."
+  },
+  "kivvu5": {
+    "question": "How does private in TypeScript differ from # fields in JavaScript?",
+    "answer": "`private` is a compiler-only check, and after transpilation the field becomes an ordinary property, accessible at runtime. A field with `#` is native JS privacy, and it can't be reached from outside even at runtime. For a Page Object `private` is enough for me, because the goal is a clean class API. `#` makes sense when you really need to hide data, such as a token."
+  },
+  "1y0zzds": {
+    "question": "How do you build a Page Object hierarchy? Do you use inheritance?",
+    "answer": "I keep at most one level: an abstract `BasePage` with an `open` method and an abstract `waitForLoaded`, which each page implements itself. Deep inheritance chains become brittle, so beyond that I use composition: a page consists of components such as `Header` or `TransferForm`. I give pages and clients to tests through Playwright fixtures. I avoid static state in classes, because it is shared between tests in a worker."
+  },
+  "159cf95": {
+    "question": "What happens if you forget await before expect in Playwright, and how do you protect against it?",
+    "answer": "A web-first assertion like `toBeVisible` returns a promise, and without `await` nobody waits for it. The test may pass green without checking anything, or fail with an error about a closed page, because the test has already finished. I turn on the `@typescript-eslint/no-floating-promises` rule with a type-aware config. For a synchronous `expect(value).toBe(x)` await isn't needed, and I keep that difference in mind."
+  },
+  "6xfs1b": {
+    "question": "How do Promise.all, allSettled, race and any differ?",
+    "answer": "`Promise.all` returns all the results or fails on the first error, and the other promises are not cancelled. `allSettled` waits for all of them and returns the status of each, and I use it for cleanup so that one error doesn't stop the deletion of the rest of the data. `race` returns the first one to finish, successful or not, and `any` returns the first successful one or an `AggregateError` if all failed. For data preparation in a test I take `all`."
+  },
+  "1ywcuv0": {
+    "question": "Why can't you use forEach with an async callback? What is the right way?",
+    "answer": "`forEach` ignores the promises the callback returns, so the code after it runs before the operations finish, and errors become unhandled rejections. That way a test may check data that hasn't been cleaned up. If the order matters, I write `for...of` with `await`, and if the operations are independent, `Promise.all` with `map`. The same goes for `filter`: an async predicate returns a promise, and it is always truthy."
+  },
+  "1l7lskl": {
+    "question": "How do you get a union of keys and values from a constant object?",
+    "answer": "I declare the object with `as const`, and then `keyof typeof ROUTES` gives a union of the keys, and `(typeof ROUTES)[keyof typeof ROUTES]` a union of the values. That gives me one source of truth for routes, roles or endpoints. A helper `goTo(page, name: RouteName)` won't accept a typo, and a new route becomes available automatically. `typeof` here is a type operator, not a runtime operator."
+  },
+  "1b64h38": {
+    "question": "What are mapped and conditional types? Give an example.",
+    "answer": "A mapped type iterates over keys: `{ [K in keyof T]: T[K] | null }` makes all fields nullable, and that is how `Partial` and `Readonly` are built. A conditional type is a type-level condition `T extends U ? X : Y`, and with `infer` you can extract part of a type, for example an array's element type. On a union a conditional type is applied to each member separately, which is how `Exclude` works. In tests I write these rarely, mostly in the framework layer."
+  },
+  "17on11b": {
+    "question": "Which tsconfig options do you always turn on in a test project and why?",
+    "answer": "`strict` without fail, because without `strictNullChecks` and `noImplicitAny` TS hardly helps. I add `noUncheckedIndexedAccess`, so that `rows[0]` has a type with `undefined` and I don't fail on an empty result. I set `noEmit`, because Playwright runs the tests, and I configure `paths` for short imports. Since Playwright doesn't type-check at startup, on CI I have a separate `tsc --noEmit` step."
+  },
+  "nufju4": {
+    "question": "Why isn't 0.1 + 0.2 equal to 0.3, and how do you work with money in tests?",
+    "answer": "`number` is a binary floating-point number, and 0.1 has no exact representation, so you get `0.30000000000000004`. `toFixed` also rounds inaccurately: `(1.005).toFixed(2)` gives `1.00`. I compare money in minor units as integers, taking into account that JPY has 0 decimal places. Fees and rates I compute with a decimal library using the rounding rule from the specification, for example half-even."
+  },
+  "bb20n5": {
+    "question": "Tell me about the traps with ||, ==, sort and dates that you have seen in tests.",
+    "answer": "`fee || 500` will replace a valid zero fee with 500, so for defaults I use `??`. `==` does a non-obvious coercion, for example `'' == 0` is true, so only `===`. `sort()` without a comparator sorts as strings, `[10, 1, 2]` becomes `[1, 10, 2]`, and it also mutates the array. In `Date` months are zero-based, and `new Date('2026-01-15')` is parsed as UTC, so I fix the time zone on CI and in the Playwright config."
+  },
+  "qae6v6": {
+    "question": "How does static testing differ from dynamic testing?",
+    "answer": "Static testing is without running the program: reviews of requirements, design, code. Dynamic testing is when we run the system and check its behaviour. Static is cheaper, because it finds problems before they are coded: for example, I find a contradiction in the requirements already at grooming."
+  },
+  "5bit48": {
+    "question": "What are black box, white box and grey box?",
+    "answer": "Black box is testing against requirements without knowing the code. White box is with full knowledge of the internal logic. Grey box is in between: I don't read the code, but I check the database, API requests and logs. That is how I work most often: an action in the UI, then checking the request in DevTools and the record in the database."
+  },
+  "11ejp00": {
+    "question": "What is a decision table and when do you use it?",
+    "answer": "I use a decision table when the result depends on a combination of conditions. I write out all the combinations and the expected result for each. Besides test cases, this often gives questions for the requirements, for example which error to show when two conditions fail at once."
+  },
+  "sfdo8k": {
+    "question": "How does a test strategy differ from a test plan?",
+    "answer": "A strategy is the general approach to testing at the product level, and it rarely changes. A plan is the concrete application of the strategy to a release or a feature, with dates, people and scope."
+  },
+  "ce1lz2": {
+    "question": "What do you do if a bug doesn't reproduce?",
+    "answer": "First I reproduce it under exactly the same conditions: environment, build, user, data. I collect the logs, the network and the time of the incident, look for special conditions such as a race or a cache, and ask the developer to look at the server logs. If it doesn't reproduce, I document everything found and the frequency instead of just closing it."
+  },
+  "b4v8l1": {
+    "question": "What are Definition of Ready and Definition of Done?",
+    "answer": "Definition of Ready is the criteria for when a task can be taken into work: clear requirements, acceptance criteria, mockups. Definition of Done is when it is finished: the code is merged, tested, and there are no critical bugs. As QA I watch both: without acceptance criteria we don't take a task into the sprint, and without verification we don't close it."
+  },
+  "kwrxd0": {
+    "question": "How do cookies, localStorage and sessionStorage differ?",
+    "answer": "Cookies are sent to the server with every request and are limited to a few kilobytes. LocalStorage lives in the browser until it is cleared, and sessionStorage only while the tab is open. For security I check that the session cookie has the HttpOnly, Secure and SameSite flags."
+  },
+  "gxc8y7": {
+    "question": "What is reconciliation and how do you test it?",
+    "answer": "Reconciliation compares our operations with the bank's or provider's data. I test not only a full match, but also discrepancies: an operation exists in only one system, different amounts or statuses, duplicates. The main thing is that every discrepancy ends up in a report for review and doesn't disappear."
+  },
+  "erh4id": {
+    "question": "How do you choose quality metrics for a project?",
+    "answer": "I start with the goal, not the metric, following the Goal-Question-Metric approach. For example, the goal is fewer bugs in production, the question is how many we miss and where we should have caught them, and the metrics are defect leakage and the distribution of production bugs by module. I keep three to five key metrics, each of which leads to a concrete action, and I look at trends, not individual numbers."
+  },
+  "1yd1wjq": {
+    "question": "How do volumes and networks work, and how do you reset test data?",
+    "answer": "Volumes store data outside the container, so the database survives a restart. To start from a clean state I do compose down with the v flag, which removes the volumes and runs the seed scripts again. Inside Compose services reach each other by name, and from my computer through published ports on localhost."
+  },
+  "wml4r9": {
+    "question": "How do you test features built on LLMs (a chatbot, an assistant)?",
+    "answer": "LLM responses are non-deterministic, so I check not the exact text but criteria: whether the needed facts are there, whether forbidden ones are absent, whether the format and tone are right. I have a set of reference queries that I run after every prompt or model change. Separately I test prompt injection, hallucinations, and that the bot correctly says \"I don't know\" or hands the question to a human."
+  },
+  "r7yse1": {
+    "question": "You are the only QA on a new project. What do you do in the first 30 days?",
+    "answer": "The first week I study the product and talk to the PM and developers to understand where it hurts most. The second I assess what already exists: tests, documentation, the release process. The third I deliver quick results: a smoke checklist of critical scenarios and taking part in grooming. And in the fourth I propose a risk-based test strategy and agree it with the team. The main thing is to understand the process first and only then change it."
+  },
+  "spr7u4": {
+    "question": "How do QA, QC and testing differ?",
+    "answer": "Testing is the search for defects in a product. QC is quality control of the product, and testing is its main part. QA is wider: it is work on the process so that defects don't appear at all, with requirement reviews, standards, process improvements. Testing is part of QC, and QC is part of QA."
+  },
+  "15e3jw3": {
+    "question": "What is exploratory testing and how do you do it in a structured way?",
+    "answer": "Exploratory is when I study the product and design and execute tests at the same time. To keep it controlled, I work in sessions: I set a charter with a specific goal, limit the time and keep notes, and at the end I have bugs, questions for the team and ideas for new test cases."
+  },
+  "elvbma": {
+    "question": "What is state transition testing?",
+    "answer": "For entities with states, such as payments, orders and accounts, I draw a state diagram and check all the valid transitions. And most importantly the invalid ones: that a rejected payment can't be debited, and a refunded one can't be refunded a second time."
+  },
+  "1qegax6": {
+    "question": "What is a traceability matrix?",
+    "answer": "A traceability matrix links requirements to test cases, results and defects. It shows that every requirement is covered and helps assess the impact of changes. In Jira I do this with links between stories, cases in Zephyr and bugs."
+  },
+  "1qrjlss": {
+    "question": "The developer says \"it's not a bug\". What do you do?",
+    "answer": "First I check myself against the requirement and the mockup. If the requirement is clear, I show it and the evidence. If it is ambiguous, the question goes to the PM, because the expected behaviour is defined by the product, not by me and the developer. I record the decision in the ticket so we don't come back to it a second time."
+  },
+  "1badv6v": {
+    "question": "What is shift-left and how can QA give early feedback?",
+    "answer": "Shift-left is testing as early as possible. I review requirements and mockups before development, at grooming I ask about boundary and negative scenarios, I write test cases in advance so the developer sees what will be checked, and I test the API before the UI appears."
+  },
+  "1nm3ayw": {
+    "question": "How do you approach cross-browser and responsive testing?",
+    "answer": "I build a matrix of browsers and devices based on analytics, not everything at once. The most popular configurations I test fully, and the rest with smoke. I check the layout at breakpoints, forms, date and number formats, and I always check part of it on real devices, because emulation doesn't show everything."
+  },
+  "1srl8ra": {
+    "question": "What do you check in calculations with money?",
+    "answer": "I check that money is calculated without float, because that is where errors like zero point one plus zero point two not equalling zero point three come from. I clarify the rounding rule and the step where it happens, the number of decimal places for each currency, and that when splitting, the sum adds up to the cent."
+  },
+  "h8wmdo": {
+    "question": "What are defect leakage, DRE and defect density and how do you calculate them?",
+    "answer": "Defect leakage is the share of defects we missed into production out of all those found. DRE is the opposite, the share found before release. For example, forty-five bugs before release and five after is ten percent leakage and ninety DRE. Defect density shows which modules are the most problematic. I count only significant defects and over a fixed window after release, so that minor things don't distort the picture."
+  },
+  "7bdfgu": {
+    "question": "How do you run automated tests in Docker on CI?",
+    "answer": "I run automated tests in the official image with a fixed browser version: for Playwright it is Microsoft's image, for Cypress it is cypress included. Then the environment is the same locally and on CI. I bring up the application and its dependencies with Compose before the tests, and after the run I save the reports and remove the containers together with the data."
+  },
+  "18f3s3l": {
+    "question": "How is AI changing the QA role, and will it replace testers?",
+    "answer": "AI takes over the routine: drafts of cases, data and code, a first analysis of logs. And QA's value shifts to understanding risks and the business, exploratory testing, critical thinking and testing AI features themselves. I don't think AI will replace testers, but a tester who knows how to use it will be stronger than one who doesn't."
+  },
+  "ee379a": {
+    "question": "The PM wants to release with a known critical bug. What is your position?",
+    "answer": "The release decision is made by the business, and my job is to make it a conscious one. I explain the bug's impact clearly, offer options, such as turning the feature off with a flag, a workaround, a quick hotfix with monitoring, and I record the decision in writing. But if the bug affects data security or regulatory requirements, I escalate higher."
+  },
+  "9nfc9j": {
+    "question": "What is a relational database and what is SQL?",
+    "answer": "A relational database stores data in tables linked to each other, and SQL is a declarative language for working with them: I describe what data I want, and the database decides how to find it. I have worked mostly with PostgreSQL, but the basic syntax is the same across different DBMSs."
+  },
+  "x5a669": {
+    "question": "In what order is a query actually executed?",
+    "answer": "A query isn't executed in the order it is written: first FROM and JOIN, then WHERE, GROUP BY, HAVING, and only then SELECT, ORDER BY and LIMIT. That is why an alias from SELECT can't be used in WHERE, but can in ORDER BY, and why aggregates are filtered with HAVING and not with WHERE."
+  },
+  "n6dram": {
+    "question": "How do COUNT(*), COUNT(col) and COUNT(DISTINCT col) differ?",
+    "answer": "COUNT star counts all rows, COUNT of a column only those where the value is not NULL, and COUNT DISTINCT the number of unique non-empty values. The difference between the first two immediately shows how many records have an empty field, and I often use this to check data completeness after a migration."
+  },
+  "9w1emg": {
+    "question": "Why did the row count grow after a JOIN and the sum doubled?",
+    "answer": "In a one-to-many join the row on the \"one\" side is duplicated for each pair, and aggregates over its columns get doubled. So when I count sums across several levels, user, accounts, transactions, I first aggregate the child table in a subquery and then join. And as QA I use this trap as a hint: if a report shows doubled sums, the first thing I check is the JOIN."
+  },
+  "ggkwkn": {
+    "question": "How does IN differ from EXISTS?",
+    "answer": "IN compares a value to a list from a subquery, while EXISTS only checks whether there is at least one row and can stop at the first. In the positive form modern databases often execute them the same way, so the main difference is in negation: NOT EXISTS is safe, and NOT IN breaks if the subquery contains NULL."
+  },
+  "1171kc7": {
+    "question": "What is ACID?",
+    "answer": "ACID is four guarantees of transactions. Atomicity: all or nothing. Consistency: the database moves between valid states without violating constraints. Isolation: parallel transactions don't see each other's intermediate states. Durability: what was committed with COMMIT won't disappear even on a failure. Using a transfer as the example: money can't be debited without being credited, and two parallel transfers can't both spend the same balance."
+  },
+  "1kci4vr": {
+    "question": "What is EXPLAIN and how do you use it?",
+    "answer": "EXPLAIN shows the query's execution plan, and EXPLAIN ANALYZE also runs it and shows the actual time. I look at whether an index is used or a full table scan happens. In a bug report about a slow page this lets me give the developer specifics, not just \"it's slow\". And I remember that ANALYZE on an UPDATE really changes the data."
+  },
+  "17vb9e": {
+    "question": "What are window functions and how do they differ from GROUP BY?",
+    "answer": "A window function computes a value over a group of rows, but, unlike GROUP BY, doesn't collapse them: every row stays and gets an extra column. PARTITION BY sets the groups, and ORDER BY the order inside. That way I can, for example, show each transaction and next to it the total amount for its account in one query."
+  },
+  "8ik3ux": {
+    "question": "How do you store money correctly, and what bugs are there?",
+    "answer": "Money must not be stored in FLOAT, because it has a binary error: zero point one plus zero point two is not exactly zero point three, and over thousands of operations cents get lost. The right way is NUMERIC or integer minor units. As QA I test amounts with cents, the rounding rules of fees, and whether the sum of the parts matches the total."
+  },
+  "nl8fb6": {
+    "question": "Task: remove duplicates, leaving one record each.",
+    "answer": "I number the rows in each group of duplicates with ROW_NUMBER and PARTITION BY and delete everything with a number greater than one, keeping the oldest record. First I run a SELECT of those same rows, and I do everything in a transaction. And I clarify whether the duplicates have child records, otherwise foreign keys won't let the delete happen or the related data will vanish through a cascade."
+  },
+  "hkbb4h": {
+    "question": "What are a primary key and a foreign key?",
+    "answer": "A primary key uniquely identifies a row: it is unique and never empty. A foreign key references the primary key of another table and guarantees integrity: for example, you can't create an account for a user who doesn't exist. For me as QA it is also a hint of what to test: whether the system handles such errors correctly."
+  },
+  "sekqz8": {
+    "question": "How is a SELECT query structured?",
+    "answer": "A query starts with SELECT and a list of columns, then FROM with a table, and then, as needed, WHERE for a filter, GROUP BY and HAVING for grouping, ORDER BY for sorting and LIMIT for restriction. For quick exploration I write SELECT star, but in automated tests I list the columns explicitly, so the test doesn't depend on changes to the table's structure."
+  },
+  "rhwu8y": {
+    "question": "How does GROUP BY work?",
+    "answer": "GROUP BY splits rows into groups with equal values and computes an aggregate for each group. The rule is simple: every column in SELECT must be either in GROUP BY or inside an aggregate function. I often group by status to see the distribution of data and notice anomalies, for example an unexpectedly large number of failed."
+  },
+  "1pjn50u": {
+    "question": "What are RIGHT, FULL OUTER and CROSS JOIN?",
+    "answer": "RIGHT JOIN is the mirror of LEFT, and it is usually replaced with LEFT by swapping the tables. FULL OUTER JOIN returns everything from both sides, and it is ideal for reconciling two data sets, for example our transactions with a provider's statement. CROSS JOIN gives all combinations of rows, so you have to be careful with it."
+  },
+  "1pai68j": {
+    "question": "Why can NOT IN return zero rows?",
+    "answer": "If the subquery in NOT IN returns at least one NULL, the comparison with it gives \"unknown\", and the whole query returns zero rows without an error. So to find missing records I use NOT EXISTS or a LEFT JOIN with a NULL check. Such a bug is easy to miss: the query looks right and just finds nothing."
+  },
+  "13fq1js": {
+    "question": "What are isolation levels and which concurrency problems do they solve?",
+    "answer": "When transactions run at the same time, anomalies occur: a dirty read of uncommitted data, a non-repeatable read, phantom rows and a lost update. Isolation levels, from Read Uncommitted to Serializable, protect against them to different degrees; in PostgreSQL the default is Read Committed. As QA I test this with parallel requests: for example, two simultaneous debits from one account must not produce a negative balance."
+  },
+  "125ih76": {
+    "question": "How do you test database migrations?",
+    "answer": "For migrations I compare the state before and after: the row count and checksums by groups must match. I check how the new columns were filled for old records, whether the new constraints failed, whether the application works with the old data and whether the rollback is correct. And separately, how long the migration takes on a large volume of data, because it may lock the table in production."
+  },
+  "gtaij2": {
+    "question": "How do ROW_NUMBER, RANK and DENSE_RANK differ?",
+    "answer": "All three number rows by the sort order, and the difference is in equal values. ROW_NUMBER always gives unique numbers, RANK gives equal values an equal rank with a gap after them, and DENSE_RANK has no gap. So for \"the second highest salary\" taking ties into account I use DENSE_RANK, and for deduplication ROW_NUMBER."
+  },
+  "5j3weq": {
+    "question": "What is SQL injection and how do you test for it?",
+    "answer": "SQL injection is when user input gets into a query as code, and a special string, for example with a quote and a \"one equals one\" condition, changes the query's logic. The defence is parameterised queries. As QA I check search fields, filters and API parameters with basic strings with quotes and comments: I expect them to be handled as plain text, with no database errors in the response."
+  },
+  "1gmu4j1": {
+    "question": "Task: the employee with the highest salary in each department.",
+    "answer": "GROUP BY with MAX gives only the amount, not the name, so I use the window function RANK partitioned by department and take rank one, so I see everyone if several people share the maximum. An alternative without window functions is to join the table with a subquery that computes the maximum per department."
+  },
+  "q4kxuu": {
+    "question": "Tell me what happens from pressing the \"Transfer\" button to the server's response.",
+    "answer": "DNS turns the domain into an IP, and a TCP connection and TLS are established. The client sends `POST /api/transfers` with the token and JSON, and the load balancer or API Gateway passes it to a server instance. The server checks authorisation, validates the data, runs the business logic such as checking the balance and limits, and writes to the database in a transaction. Then it returns 201 with the transfer id, and the client shows the result."
+  },
+  "16ulycr": {
+    "question": "How does a path parameter differ from a query parameter? Give an example.",
+    "answer": "A path parameter identifies a specific resource, for example `/users/42`. A query parameter filters, sorts or paginates the output, for example `/users?status=active&page=2`. For path I check an invalid type, such as `abc` instead of a number, which must give 400, and a nonexistent or someone else's id with 404 or 403. For query I check filter combinations and pagination boundaries."
+  },
+  "12wi4dt": {
+    "question": "How would you test protection against double debit on payment?",
+    "answer": "I would send `POST /transfers` with a particular `Idempotency-Key` and get 201 with an id. Then I would send the same request with the same key and check that the same id is returned and the database has one transaction. Separately I would check the same key with a different body: the server must return an error, not create a new payment. And one more scenario with a response timeout and a client retry."
+  },
+  "18x7dv4": {
+    "question": "How do 401 and 403 differ, and 400 and 422?",
+    "answer": "401 means the client is not authenticated: there is no token, or it is expired or corrupted. 403 means I know who you are, but you have no rights to this resource. 400 means the request is malformed in form, for example broken JSON or a missing required field. 422 means the form is right, but a business rule is violated, such as an amount greater than the balance."
+  },
+  "1ogg972": {
+    "question": "The API returns 200 with `{ \"error\": \"Invalid amount\" }` in the body. Is that fine?",
+    "answer": "No, it is a bug. Clients, monitoring and automated tests go by the status and will consider such a request successful. An invalid amount must give a 4xx, for example 400 or 422, with a clear message. Likewise a 500 on invalid input is a bug, because it means an unhandled exception on the server."
+  },
+  "de73jy": {
+    "question": "What variable scopes are there in Postman, and which wins when names are the same?",
+    "answer": "From wide to narrow: Global, Collection, Environment, Data and Local. When names are the same, the narrower one wins, so an environment variable overrides a collection one. `pm.variables.get` returns exactly the value from the scope that won. I almost never use global variables, and I keep `baseUrl` and test logins in the environment."
+  },
+  "1nof746": {
+    "question": "What authorisation checks do you do for a new endpoint?",
+    "answer": "Without a token, with an expired one, a corrupted one and a token after logout: I expect 401. With a role without rights: 403. The most important is IDOR: I create a resource under the first user and request it with the second user's token, expecting 403 or 404, but never the data. I check this not only for GET, but also for modification and deletion."
+  },
+  "1pc0hwz": {
+    "question": "How do pre-request and post-response scripts differ? Give examples.",
+    "answer": "Pre-request runs before sending: I generate unique data, get a token through `pm.sendRequest` or compute a timestamp. Post-response runs after the response: checks with `pm.test` and `pm.expect` and saving values, for example the id of a new account for the next request. The execution order is the collection script, the folder's, then the request's."
+  },
+  "18a9kt2": {
+    "question": "How would you run a Postman collection on CI?",
+    "answer": "I export the collection and the environment to JSON and put them in the repository. In the pipeline I run `newman run` with `-e` for the environment, `-d` for the data file and the reporters cli, htmlextra and junit. I pass secrets through `--env-var` from the CI secrets. If at least one test fails, Newman returns a non-zero code and the job turns red, and the JUnit report is picked up by Jenkins or GitHub Actions."
+  },
+  "y7yf6r": {
+    "question": "How would you test a transfer creation endpoint?",
+    "answer": "I start with the positive case: status 201, the schema, the values, and a check through GET or SQL that the transfer was saved. Then the negative ones: without required fields, null, wrong types, zero, a negative amount, an amount greater than the balance, an unsupported currency, invalid JSON. Then security: 401 without a token, IDOR, no sensitive data. And the fintech specifics: a repeat with the same `Idempotency-Key`, cent precision, and the balances of both parties after the transfer."
+  },
+  "7uefuq": {
+    "question": "Postman or code for API automation? Which do you choose?",
+    "answer": "For exploring a new endpoint and quick checks I use Postman. The regression suite I keep in code, for example on Playwright `request`, next to the UI tests. That way tests go through review in git, I can reuse data factories and helpers, and I can type the responses in TypeScript."
+  },
+  "ttw7s4": {
+    "question": "How does offset pagination differ from cursor pagination and what do you test in it?",
+    "answer": "Offset works through `limit` and `offset`, lets you jump to any page, but is slow at large offsets and may duplicate or skip records on inserts. Cursor returns a `nextCursor` after the last element, so it is stable and fast, but with no jump to an arbitrary page. I test the `limit` boundaries, the last page, the absence of duplicates when walking through all pages, and an invalid cursor, which must give 400."
+  },
+  "93t70h": {
+    "question": "How does testing GraphQL differ from REST?",
+    "answer": "GraphQL has one endpoint, and the client picks the fields. The status is often 200 even with an error, so I check `data` and the `errors` array, not only the status. I check authorisation at the field and nested object level, because someone else's data may leak through a nested field. I also check the limits on query depth and complexity."
+  },
+  "14vtjgz": {
+    "question": "A request works in Postman but fails in the browser. What do you check?",
+    "answer": "First I suspect CORS, because it is a browser restriction and Postman doesn't apply it. I open Console and Network: I see whether a preflight `OPTIONS` went out and what it returned. I check `Access-Control-Allow-Origin`, `Allow-Methods` and `Allow-Headers` for our origin. I also compare whether the headers and cookies differ between the browser and Postman."
+  },
+  "7nkkry": {
+    "question": "How do `Cache-Control: no-cache` and `no-store` differ, and how does ETag work?",
+    "answer": "`no-cache` allows storing the response, but it must be validated with the server before use. `no-store` forbids storing at all, and for financial data that is the one I expect. ETag is the resource's version: the client sends `If-None-Match` with the old ETag, and if nothing changed, the server returns 304 without a body. I check that the ETag also changes after the resource is modified."
+  },
+  "k9wbnx": {
+    "question": "What is mass assignment and how do you test for it?",
+    "answer": "It is when the server binds the whole request body to a model and saves fields that the client has no right to change. For example, in `PATCH /users/me` I add `\"role\": \"admin\"` or `\"balance\": 1000000`. Then I do a GET and check that those fields didn't change. If they did, it is a critical security bug."
+  },
+  "j8fpvn": {
+    "question": "What JWT vulnerabilities do you know and how do you test them?",
+    "answer": "I check a token with `alg: none` and no signature, a token with a changed role in the payload without re-signing, and a token from another environment: everywhere I expect 401. I look at whether the payload has sensitive data, because it is only encoded. I also check what happens to a token after logout and a password change, because a JWT is stateless and may live until `exp`."
+  },
+  "17d57ll": {
+    "question": "What is consumer-driven contract testing and which API changes are breaking?",
+    "answer": "A consumer, for example the front end, describes in a Pact test which requests it makes and which fields it expects, and a contract is generated from that. The provider in its own CI verifies that the real API meets it, so a break is visible before deployment. Adding an optional field or a new endpoint usually doesn't break clients. Removing or renaming a field, changing a type or a new required field in a request is a breaking change."
+  },
+  "bzzmk8": {
+    "question": "How do load, stress, spike and soak tests differ, and why do you look at p95 rather than the average?",
+    "answer": "Load is the expected load, to check the SLA. Stress: we raise it above normal and look for the breaking point. Spike is a sudden burst, soak is a moderate load for hours to find memory leaks. The average hides the slow tail, so I look at p95 and p99: for example, p95 under 500 ms means 95% of requests fit within that time."
+  },
+  "npzm6e": {
+    "question": "How do you organise retries correctly for a payment API?",
+    "answer": "I retry only temporary errors: a timeout, 429, 502, 503, 504, and never 400 or 422. I use exponential backoff with jitter and limit the number of attempts, and on 429 and 503 I respect `Retry-After`. The main thing is that every retry goes with the same `Idempotency-Key`, because a timeout doesn't mean the payment didn't go through. In a test I emulate a timeout and check in the database that there is one transaction."
+  },
+  "fzgbl0": {
+    "question": "How do you structure an answer to a System Design task for QA?",
+    "answer": "I follow a scheme: requirements, layers, solution, trade-offs, metrics. First I clarify the numbers: how many tests, what the time target is, what environments and external dependencies there are. Then I break the system into layers and for each I say what I do and why. At the end I name what we pay for the solution, and how we will measure success, for example the p95 of pipeline time and the flaky rate."
+  },
+  "18fhs07": {
+    "question": "What questions will you ask first if you are asked to design a test system?",
+    "answer": "I ask about scale: how many tests there are now and in a year, which test levels exist. Then the time target: feedback on a PR in 10 minutes or a nightly run. Then environments, the number of teams and external dependencies, for example a payment provider. If there are no numbers, I state assumptions out loud so the calculations are transparent."
+  },
+  "1ote18e": {
+    "question": "Tell me what layers your test framework consists of.",
+    "answer": "On top are the tests, which read like a business scenario. Under them are business steps, Page Objects and typed API clients. Fixtures manage the lifecycle: they create a user with a balance through the API and clean up after the test. Separately there is a config with env validation and a reporting layer. Each layer knows only about the one below, so a UI change is fixed in one place."
+  },
+  "il0nw0": {
+    "question": "How would you design a framework for 2000 e2e tests that must finish in 15 minutes?",
+    "answer": "First I calculate: 2000 tests of 20 seconds each is about 667 minutes sequentially, so about 60 parallel slots are needed, for example 8 shards of 8 workers. The tests must be fully isolated by data, with `fullyParallel` and blob reports merged through `merge-reports`. I create preconditions through the API, log in with `storageState`, and prepare the image with the browsers in advance. In parallel I review the pyramid, because it is cheaper to move part of the e2e to the API. I measure the p95 of time, the flaky rate and the shard balance."
+  },
+  "3uv76z": {
+    "question": "How do you organise a framework if several teams write tests?",
+    "answer": "I move the shared core into a separate versioned package: API clients, fixtures, config, reporters. Each team keeps its tests next to its service and updates the core version when it is ready. The QA architect is responsible for the standards and the core, and the teams for their own tests. That way teams don't block each other, while the approaches stay uniform."
+  },
+  "wbphjr": {
+    "question": "How do you organise test data for parallel runs?",
+    "answer": "The main rule: every test or every worker has its own data, with no shared state. I create users and accounts through the API or a test hook in a fixture, and if that is expensive, through a worker-scoped fixture with a pool of accounts per worker. All entities carry a run label so they can be cleaned up afterwards. I leave only immutable reference data shared, for example currencies."
+  },
+  "1s7xg2g": {
+    "question": "How do you test an integration with a payment provider whose sandbox is unstable?",
+    "answer": "For most tests I put in an HTTP stub with controllable responses: success, refusal, a timeout, a duplicate callback. This gives stability and lets me reproduce errors the sandbox can't. A small set of integration tests with the real sandbox goes in a separate job and doesn't block the PR. That way I verify both my own logic and the real integration."
+  },
+  "18zv7s": {
+    "question": "Why is an ephemeral environment better than a shared staging, and what are its downsides?",
+    "answer": "An ephemeral environment is brought up for each PR and destroyed after merge, so there are no conflicts between teams and the data is clean. The downsides are cost and spin-up time, and bringing up all the microservices is hard. I usually bring up the changed service with its closest dependencies, and take the rest from staging or stubs."
+  },
+  "1dt2kbt": {
+    "question": "Which tests do you run on a PR, on main and at night?",
+    "answer": "On a PR: lint, typecheck, unit, API and e2e smoke, so feedback comes in 5-10 minutes. On main: the full API and e2e suite. At night: cross-browser, long scenarios and performance. After deploy: smoke in production. Critical money scenarios, such as a transfer and a refusal on insufficient balance, I always keep in the PR suite."
+  },
+  "2jf4wa": {
+    "question": "How do workers and shards differ in Playwright?",
+    "answer": "Workers are processes on one machine, each with its own browser, and their number is limited by CPU and memory. Shards are a split of the suite between several machines with `--shard=1/8`. On each shard I write a blob report, and then a separate job merges them with `merge-reports`. For an even distribution I turn on `fullyParallel`, otherwise a large file drags one shard."
+  },
+  "1s4gtvh": {
+    "question": "You added shards, but the pipeline didn't get faster. What do you do?",
+    "answer": "I look for the bottleneck instead of adding more machines. I check how long the runner startup and dependency installation take, whether there is login through the UI in every test, and which tests are the slowest. Very often the problem is the shared environment: the DB or the rate limit can't hold 64 parallel clients, and the number of timeouts grows. Then you have to scale the environment or give the shards separate ones."
+  },
+  "ut49rv": {
+    "question": "How do you build a process for fighting flaky tests?",
+    "answer": "I automatically collect the history of results and mark tests that pass only with a retry. Such a test goes into quarantine: it is taken out of the blocking gate, and gets a ticket with an owner and a deadline. I investigate the cause through the trace and the backend logs by correlation id. I return it to the gate only after many runs, for example `--repeat-each=20`."
+  },
+  "1db1qu5": {
+    "question": "Do retries solve the problem of flaky tests?",
+    "answer": "No, a retry is insurance and a source of diagnostics, not a solution. On CI I set 1-2 retries and `trace: 'on-first-retry'`, so I have a trace exactly for the failure. But in fintech an unstable debit test may be catching a real race condition, and a retry will hide it. So I analyse every test that passed only on a repeat."
+  },
+  "1emo75k": {
+    "question": "Which metrics of a test system would you show on a dashboard?",
+    "answer": "I show the p95 of pipeline time, because developers feel exactly the tail, the flaky rate, the pass rate on main and the cost of a run. I consider escaped defects, bugs found in production, the most important. For each such bug I ask at which level a test should have caught it. I use code coverage carefully, because it can be grown without meaningful checks."
+  },
+  "1yborky": {
+    "question": "How does observability help you in testing?",
+    "answer": "I pass my own correlation id from the test and store it in the report annotation. When a test fails, I find the logs and traces in all the services by this id within a minute. After a release I look at error and latency metrics and have synthetic checks in production, for example login and viewing the balance with a test account."
+  },
+  "1ebh2n": {
+    "question": "What can go wrong with a cache and how do you test it?",
+    "answer": "The main risk is stale data: after a transfer the balance in the UI is old, because it is read from the cache. I check that a read after a change returns the new value within the promised time. Separately I test the cache keys, because a key without the user id may show someone else's data. I also check the service's behaviour when the cache is unavailable: it should work more slowly, not fail."
+  },
+  "19kntzr": {
+    "question": "What is replication lag and how does it show up in bugs?",
+    "answer": "The primary accepts writes, and the replicas receive them asynchronously with a delay. If the transfer history is read from a replica, the user may not see a just-created transfer. I test reading right after a write and, if possible, the behaviour under an artificial replication delay. For critical data, reads after a write are often done from the primary."
+  },
+  "13fjwcy": {
+    "question": "What does at-least-once mean in a queue and what follows from it for testing?",
+    "answer": "At-least-once means a message won't be lost, but may arrive twice. So the consumer must be idempotent: the event \"credit 30\" twice must give a single credit. I test duplicates, order violations, a consumer crashing mid-processing, and that an invalid message goes to the DLQ and doesn't block the queue."
+  },
+  "178h3jl": {
+    "question": "How would you test a transfer system with a queue between the Transfer and Ledger services?",
+    "answer": "I would split it into layers: unit for validation and statuses, component for each service with a real DB, contract for the event format between services. E2E creates a transfer and waits for `COMPLETED` through `expect.poll`, then checks both balances. The main focus is negative scenarios: a duplicate event, Ledger crashing mid-processing, a repeated POST with the same idempotency key, parallel transfers exceeding the balance. I monitor transfers stuck in `PENDING` and the DLQ size."
+  },
+  "nertbq": {
+    "question": "How do you test an idempotency key for payments?",
+    "answer": "I send a repeat with the same key and body and check that the same payment is returned and there is one debit. Then the same key with a different body: I expect an error, not silent ignoring. Separately, two parallel requests with one key: there must be one payment. I also check the behaviour after the key's retention period expires, according to the specification."
+  },
+  "oi8g6y": {
+    "question": "Tell me what the Page Object Model is and how you implement it in Playwright.",
+    "answer": "A Page Object is a class that encapsulates the locators and actions of one page or logical screen. I pass `page` into the constructor, declare the locators as readonly fields and write async methods with business names, for example `login(email, password)`. Locators in Playwright are lazy, so it is safe to create them in the constructor before the page opens. The main benefit is that when the UI changes, I fix one place, and the tests read like a scenario."
+  },
+  "1rwuu2j": {
+    "question": "Can you write assertions inside a Page Object? What is your position?",
+    "answer": "I keep business checks in tests, because the test decides what to verify, and that way the purpose of the scenario is visible at once. In a Page Object I allow only state-waiting methods, for example `expectLoaded()`, which waits for the page heading. Methods like `verifyTotalIs100()` in a PO hide the point of the test and are poorly reusable. I also don't return a boolean from a PO through `isVisible()`, but give the test the locator for a web-first check."
+  },
+  "8zgtgj": {
+    "question": "What is a Page Component and how does it differ from a Page Object?",
+    "answer": "A Page Component describes not a whole page, but a repeating block: a header, a table, a modal, a date picker. It takes a root Locator in its constructor and builds all inner locators from it. So one `DataTable` class can be used on different pages and even twice on one, for example for active and archived payments. A Page Object then simply consists of such components."
+  },
+  "1ge1ix1": {
+    "question": "Why do you prefer composition over inheritance in Page Objects?",
+    "answer": "Deep hierarchies like BasePage, AuthPage, AdminPage become brittle over time: a change in the base breaks everything, and to understand a method you have to go through several files. Besides, a login page without a header still inherits the header. With composition a page has component fields, for example `readonly header = new Header(...)`, and takes only what it really has. My base class, if there is one, is very thin."
+  },
+  "kenofq": {
+    "question": "How do Playwright fixtures implement Dependency Injection?",
+    "answer": "A test declares in its arguments what it needs, and the runner creates those objects, passes them in and then cleans up. I add my own fixtures through `test.extend`, for example registering Page Objects and API clients there. The code before `use` is setup, the code after `use` is teardown, and it runs even if the test failed. Fixtures are lazy, so only what the test actually requested is created."
+  },
+  "2jms5p": {
+    "question": "How do fixtures with test and worker scope differ? Give examples.",
+    "answer": "A test fixture is created anew for every test, while a worker fixture is one per worker process and lives between the tests of that worker. I use worker scope for expensive and immutable things: a service token, a DB connection pool. Everything a test can change, for example a test account, I make a test fixture with cleanup after `use`. A worker fixture can't depend on test fixtures like `page`."
+  },
+  "1pe6isb": {
+    "question": "Why shouldn't you make a BaseTest in Playwright, as in Selenium frameworks?",
+    "answer": "A BaseTest with `beforeEach` creates everything for all tests, while fixtures are lazy and created only on request. Each test gets its own instances, so there are no shared fields that can be accidentally corrupted. Teardown is guaranteed, and fixtures combine through `extend` and `mergeTests`, whereas a base class can be inherited only once. I leave `beforeEach` for simple steps within one file."
+  },
+  "ebmf4g": {
+    "question": "Tell me about the Test Data Builder. Why is it used in tests?",
+    "answer": "A builder creates an object with valid default values, and the test changes only what is important for the scenario, for example `new PaymentBuilder().withAmount(0).failed().build()`. That way the point of the test is visible at once, and I add a new required field in one place. The methods return `this` for chaining, and `build()` returns a copy so as not to share a mutable object. For objects with two or three fields I don't make a Builder, because a factory with `Partial` is enough."
+  },
+  "1crkwe": {
+    "question": "How do you use faker in test data and what risks do you see?",
+    "answer": "I use faker for unique fields like email or a name, so parallel tests don't conflict. But the values that a check depends on, for example the amount for a fee calculation, I set explicitly. The main risk is non-reproducibility, so I log the generated data or use `faker.seed()`. I also watch that a default isn't generated in a static constant, otherwise all the worker's tests get the same email."
+  },
+  "1iapuif": {
+    "question": "What does a typical test data factory look like in TypeScript?",
+    "answer": "Most often it is a function with defaults and a parameter `overrides: Partial<T>` that returns `{ ...defaults, ...overrides }`. It is short and type-safe: TypeScript won't let you pass a field that isn't in the type. There is also a factory that creates an entity through the API with `request`, and I wrap that in a fixture for cleanup. It is important that a factory always returns a new object, not a shared constant."
+  },
+  "4mam6m": {
+    "question": "How does a Factory differ from a Builder and when do you choose which?",
+    "answer": "A Factory is one function with parameters, a Builder is a fluent chain of methods. I take a factory for simple and medium objects where overriding a few fields is enough. I choose a Builder when the object is complex and there are many variations, because methods like `failed()` or `inForeignCurrency()` read like a domain language. In practice they are often combined: a Builder takes its defaults from a factory."
+  },
+  "fnx4dr": {
+    "question": "What is a Facade or a Steps layer in a test framework?",
+    "answer": "A Facade combines several Page Objects and API calls into one business action, for example `sendMoney(from, to, amount)`. I wrap such methods in `test.step`, so the report and trace show a business step, not a set of clicks. I use it for preconditions and repeated paths. If a test verifies exactly this action, it works with the page directly, so the check isn't hidden."
+  },
+  "gu4nnz": {
+    "question": "What are App Actions and how do you prepare preconditions in Playwright?",
+    "answer": "App Actions means preparing state through the API or the application itself, not through the UI. I log in once in a setup project and save the state to a file, and the tests pick it up through `storageState`. I create test data through the `request` fixture with cleanup. Through the UI I go only through what the test actually verifies, plus a few end-to-end smoke scenarios."
+  },
+  "18u4mch": {
+    "question": "Give an example of the Strategy pattern in your framework.",
+    "answer": "A classic example is the login method: there is an interface `LoginStrategy` and the implementations `UiLogin` and `ApiLogin`. The test doesn't know how the login happened, it just depends on the `loggedIn` fixture. Which strategy to use is decided by an option fixture, whose value I set in `projects` or through `test.use`. A new method, for example SSO, is added as a new class without changes in the tests."
+  },
+  "11d5g9b": {
+    "question": "When is Strategy an unnecessary complication?",
+    "answer": "If there are only two variants and no new ones are expected, a simple `if` in the fixture is more honest than an interface and three classes. If the difference is a single parameter, passing a parameter is enough. For different browsers and devices I don't write my own strategy, because Playwright already does this through `projects` and `devices`. Strategy is needed when there is real polymorphism and the implementations evolve independently."
+  },
+  "193f7fc": {
+    "question": "How does a Singleton behave in Playwright with several workers?",
+    "answer": "Each Playwright worker is a separate Node process that loads modules anew. So a module-level singleton exists separately in each worker, and with `workers: 4` there will be four instances. There is no shared state between workers, and the variables from `globalSetup` aren't visible to tests, because it is also a separate process. I pass data from there through a file, environment variables or storageState."
+  },
+  "kcedr8": {
+    "question": "What would you replace a Singleton for a DB connection with?",
+    "answer": "I would make a worker fixture: it gives the same single instance per worker, but with an explicit dependency and a guaranteed closing of the pool after `use`. That way it is visible which tests work with the DB, and the resource isn't left open. I allow a Singleton only for immutable config read from env. For unique data per worker I use `test.info().parallelIndex`."
+  },
+  "1thb1av": {
+    "question": "Tell me briefly about Screenplay and whether you would use it.",
+    "answer": "Screenplay builds tests around actors: an actor has abilities, performs tasks and interactions and asks the system questions for checks. In TypeScript it is implemented by Serenity/JS. It suits a complex domain well, where several roles act in one scenario, for example a customer and an operator. For most Playwright projects I would choose POM with components and fixtures, because the learning curve is lower and the team writes tests faster."
+  },
+  "colm0q": {
+    "question": "How do DRY and DAMP differ in tests and how do you balance them?",
+    "answer": "DRY says remove duplication, DAMP says a test must be understandable on its own even at the cost of repetition. I apply DRY to infrastructure: locators, steps, fixtures, factories. And in the body of a test I leave the input data and expectations visible, so you don't have to open other files. A test like `runScenario(SCENARIOS[3])` is formally DRY, but it is impossible to read."
+  },
+  "1nh3khd": {
+    "question": "What antipatterns in test frameworks have you met and how did you fix them?",
+    "answer": "Most often these are god page objects, deep page inheritance, shared mutable state between tests and `waitForTimeout` instead of web-first assertions. I also saw wrappers over `click()` with no value and `if (isVisible)` in tests, which makes them non-deterministic. I fixed this with components, fixtures, isolated data for each test and `expect` with auto-retry. For example, moving login to storageState noticeably cut the run time."
+  }
+}

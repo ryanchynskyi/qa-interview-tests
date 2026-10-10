@@ -115,6 +115,21 @@ account already has, skips unknown content, clamps timestamps, and recalculates 
 once per newly added item, so importing twice adds nothing and nobody can import XP directly. The old
 site's save is never modified; moved guest progress is kept as a backup under `qa-hub-guest-v1.imported`.
 
+## Languages (Ukrainian / English)
+
+Ukrainian is the default; a UA/EN switch in the top bar changes the UI and the content (the choice
+is kept in `localStorage` and sets `<html lang>`).
+
+- UI strings: `apps/web/src/i18n/{uk,en}.tsx`, same shape, read with `useT()`.
+- Content: Ukrainian is the source in `packages/content/data/*.json`. English is an overlay,
+  `packages/content/data/en/*.json`, keyed by the same ids (ids are hashes of the Ukrainian text and
+  must not change). Question options keep the same order and count, because the correct index is
+  checked on the server. Missing English falls back to Ukrainian per field.
+- API: the content endpoints and `POST /quiz/check` take `?lang=en` (default `uk`); knowledge base
+  search runs over the English text for `lang=en`.
+- `npm run content:check-en` prints coverage and reports unknown ids, mismatched option lists and
+  lost code blocks. The English text is machine-written and has not been reviewed by a native speaker.
+
 ## Tests
 
 `npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.
