@@ -4,10 +4,10 @@ import {
   fromGuest,
   fromLegacy,
   importGrants,
-  importPayloadSchema,
   parseLegacyDate,
   payloadSize,
 } from '../src/import';
+import { importPayloadSchema } from '../src/import.schema';
 
 const now = new Date(2026, 9, 10, 12, 0).getTime(); // local time, like the legacy page
 const index = { sql: ['qa', 'qb', 'qc'], api: ['qd'] };

@@ -7,13 +7,19 @@ import './styles/app.css';
 import { Layout } from './Layout';
 import { AuthProvider } from './auth/AuthProvider';
 import { ProgressProvider } from './progress/ProgressProvider';
-import { AuthPage } from './views/AuthPage';
-import { ImportPage } from './views/ImportPage';
-import { Profile } from './views/Profile';
-import { Dashboard } from './views/Dashboard';
-import { KnowledgeBase } from './views/KnowledgeBase';
-import { Quiz } from './views/Quiz';
-import { Recall } from './views/Recall';
+
+// Views load on demand so the first paint only needs the shell (layout, providers, router).
+const views = {
+  dash: () => import('./views/Dashboard').then((m) => ({ Component: m.Dashboard })),
+  quiz: () => import('./views/Quiz').then((m) => ({ Component: m.Quiz })),
+  recall: () => import('./views/Recall').then((m) => ({ Component: m.Recall })),
+  kb: () => import('./views/KnowledgeBase').then((m) => ({ Component: m.KnowledgeBase })),
+  login: () => import('./views/AuthPage').then((m) => ({ element: <m.AuthPage mode="login" /> })),
+  register: () =>
+    import('./views/AuthPage').then((m) => ({ element: <m.AuthPage mode="register" /> })),
+  import: () => import('./views/ImportPage').then((m) => ({ Component: m.ImportPage })),
+  profile: () => import('./views/Profile').then((m) => ({ Component: m.Profile })),
+};
 
 // Hash routes keep the legacy URLs (#/quiz/sql, #/kb/sql/sq-0/2) working and need no server rewrites.
 const router = createHashRouter([
@@ -22,14 +28,14 @@ const router = createHashRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Navigate to="/dash" replace /> },
-      { path: 'dash', element: <Dashboard /> },
-      { path: 'quiz/:sectionId?', element: <Quiz /> },
-      { path: 'recall/:a?/:b?', element: <Recall /> },
-      { path: 'kb/:topicId?/:chapterId?/:art?', element: <KnowledgeBase /> },
-      { path: 'login', element: <AuthPage mode="login" /> },
-      { path: 'register', element: <AuthPage mode="register" /> },
-      { path: 'import', element: <ImportPage /> },
-      { path: 'profile', element: <Profile /> },
+      { path: 'dash', lazy: views.dash },
+      { path: 'quiz/:sectionId?', lazy: views.quiz },
+      { path: 'recall/:a?/:b?', lazy: views.recall },
+      { path: 'kb/:topicId?/:chapterId?/:art?', lazy: views.kb },
+      { path: 'login', lazy: views.login },
+      { path: 'register', lazy: views.register },
+      { path: 'import', lazy: views.import },
+      { path: 'profile', lazy: views.profile },
       { path: '*', element: <Navigate to="/dash" replace /> },
     ],
   },
