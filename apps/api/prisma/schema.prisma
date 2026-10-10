@@ -1,0 +1,274 @@
+// Content tables are filled by `npm run db:seed` from packages/content/data.
+// User, session and progress tables below them; progress rows cascade-delete with
+// their user, and with content that a re-seed removes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Level {
+  junior
+  middle
+  senior
+}
+
+model Topic {
+  id          String       @id
+  name        String
+  order       Int
+  sections    Section[]
+  chapters    Chapter[]
+  recallCards RecallCard[]
+}
+
+model Section {
+  id          String     @id
+  topicId     String
+  name        String
+  description String
+  order       Int
+  topic       Topic      @relation(fields: [topicId], references: [id])
+  questions   Question[]
+
+  @@index([topicId])
+}
+
+model Chapter {
+  id          String       @id
+  topicId     String
+  title       String
+  subtitle    String
+  order       Int
+  topic       Topic        @relation(fields: [topicId], references: [id])
+  articles    Article[]
+  questions   Question[]
+  recallCards RecallCard[]
+
+  @@index([topicId])
+}
+
+model Article {
+  id        String        @id
+  chapterId String
+  title     String
+  kind      String
+  level     Level?
+  html      String
+  /// Plain text of `html`, for search snippets.
+  text      String        @default("")
+  /// Lowercased title + text. Lowercased in JS, because Postgres lower()/ILIKE only
+  /// folds ASCII under the C locale used by the dev cluster.
+  search    String        @default("")
+  order     Int
+  chapter   Chapter       @relation(fields: [chapterId], references: [id])
+  reads     ArticleRead[]
+
+  @@index([chapterId])
+}
+
+model Question {
+  id           String          @id
+  sectionId    String
+  chapterId    String
+  group        String
+  level        Level
+  text         String
+  code         String
+  options      String[]
+  correctIndex Int
+  explanation  String
+  order        Int
+  section      Section         @relation(fields: [sectionId], references: [id])
+  chapter      Chapter         @relation(fields: [chapterId], references: [id])
+  states       QuestionState[]
+
+  @@index([sectionId])
+  @@index([chapterId])
+}
+
+model RecallCard {
+  id        String      @id
+  topicId   String
+  chapterId String
+  group     String
+  question  String
+  answer    String
+  order     Int
+  topic     Topic       @relation(fields: [topicId], references: [id])
+  chapter   Chapter     @relation(fields: [chapterId], references: [id])
+  states    CardState[]
+
+  @@index([topicId])
+  @@index([chapterId])
+}
+
+/**
+ * ---------- accounts ----------
+ */
+
+model User {
+  id                String    @id @default(uuid())
+  /// Stored lowercased and trimmed.
+  email             String    @unique
+  /// Null for accounts created through Google sign-in.
+  passwordHash      String?
+  /// True once a provider (Google) has vouched for this email.
+  emailVerified     Boolean   @default(false)
+  displayName       String
+  /// IANA zone; daily tasks reset at local midnight here.
+  timeZone          String
+  timeZoneChangedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  refreshTokens  RefreshToken[]
+  loginCodes     LoginCode[]
+  oauthAccounts  OAuthAccount[]
+  stats          UserStats?
+  questionStates QuestionState[]
+  cardStates     CardState[]
+  articleReads   ArticleRead[]
+  quizAttempts   QuizAttempt[]
+  xpEvents       XpEvent[]
+  dailyTasks     DailyTask[]
+}
+
+/// A sign-in identity from an external provider, linked to one user.
+model OAuthAccount {
+  provider       String
+  /// The provider's stable user id (Google "sub"), not the email.
+  providerUserId String
+  userId         String
+  email          String
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerUserId])
+  @@index([userId])
+}
+
+/// One-time code from the Google callback, stored hashed. The web app trades it for a session
+/// with a fetch, so the refresh cookie is set in the same (possibly partitioned) cookie jar
+/// as later refreshes; a cookie set on the callback navigation would land in another one.
+model LoginCode {
+  codeHash  String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// Opaque refresh tokens, stored hashed. Rotated on every use; a token reused after
+/// rotation revokes its whole family (stolen-token detection).
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+/**
+ * ---------- progress (mirrors the guest store / shared engine shapes) ----------
+ */
+
+model UserStats {
+  userId         String  @id
+  totalXp        Int     @default(0)
+  streak         Int     @default(0)
+  longestStreak  Int     @default(0)
+  lastActiveDate String?
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QuestionState {
+  userId         String
+  questionId     String
+  lastResult     Int
+  attempts       Int
+  firstCorrectAt DateTime?
+  lastXpDate     String?
+  /// Set from the app clock (not @updatedAt), so tests can control time.
+  answeredAt     DateTime
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question       Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+}
+
+model CardState {
+  userId  String
+  cardId  String
+  rating  Int
+  reviews Int
+  dueAt   DateTime
+  history Int[]
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card    RecallCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cardId])
+}
+
+model ArticleRead {
+  userId    String
+  articleId String
+  readAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, articleId])
+}
+
+model QuizAttempt {
+  id        String   @id @default(uuid())
+  userId    String
+  sectionId String
+  answered  Int
+  correct   Int
+  at        DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sectionId, at])
+}
+
+/// Append-only XP ledger; UserStats.totalXp is its running sum.
+model XpEvent {
+  id     String   @id @default(uuid())
+  userId String
+  amount Int
+  reason String
+  refId  String?
+  at     DateTime @default(now())
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, at])
+}
+
+model DailyTask {
+  userId      String
+  /// Local date (YYYY-MM-DD) in the user's time zone.
+  date        String
+  slot        Int
+  type        String
+  params      Json
+  target      Int
+  progress    Int       @default(0)
+  rewardXp    Int
+  completedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date, slot])
+}

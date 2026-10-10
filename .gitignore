@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+
+# embedded Postgres data directory (local dev only)
+.pgdata/
+
+# Playwright
+test-results/
+playwright-report/
+
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/

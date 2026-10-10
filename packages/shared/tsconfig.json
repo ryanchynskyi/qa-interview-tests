@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // No Node or DOM types: this code runs in both the browser and the API.
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src"]
+}

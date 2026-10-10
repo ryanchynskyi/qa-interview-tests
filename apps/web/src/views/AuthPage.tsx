@@ -1,0 +1,167 @@
+import { useState, type FormEvent } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { api, googleSignInUrl, HttpError } from '../api';
+import { useAuth } from '../auth/AuthProvider';
+
+const MESSAGES: Record<string, string> = {
+  invalid_credentials: 'Невірний email або пароль.',
+  email_taken: 'Акаунт з таким email вже існує. Спробуй увійти.',
+  rate_limited: 'Забагато спроб. Зачекай хвилину.',
+  google_cancelled: 'Вхід через Google скасовано.',
+  google_state: 'Сесія входу через Google застаріла. Спробуй ще раз.',
+  google_email_unverified: 'Google не підтвердив цей email, тож увійти з ним не можна.',
+  google_disabled: 'Вхід через Google зараз недоступний.',
+};
+const GOOGLE_FALLBACK = 'Не вдалося увійти через Google. Спробуй ще раз.';
+
+export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
+  const { state, login, register } = useAuth();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = params.get('next') || '/dash';
+  const googleError = params.get('error');
+  const providers = useQuery({
+    queryKey: ['providers'],
+    queryFn: api.providers,
+    staleTime: Infinity,
+  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [error, setError] = useState<string | null>(
+    googleError ? (MESSAGES[googleError] ?? GOOGLE_FALLBACK) : null,
+  );
+  const [busy, setBusy] = useState(false);
+
+  if (state.status === 'user') return <Navigate to={next} replace />;
+
+  const isLogin = mode === 'login';
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      if (isLogin) await login({ email, password });
+      else await register({ email, password, displayName: displayName.trim() || undefined });
+      navigate(next, { replace: true });
+    } catch (err) {
+      const code = err instanceof HttpError ? err.code : undefined;
+      setError(
+        (code && MESSAGES[code]) ??
+          (err instanceof Error ? err.message : 'Щось пішло не так. Спробуй ще раз.'),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card authcard">
+      <h2>{isLogin ? 'Вхід' : 'Реєстрація'}</h2>
+      <p className="note" style={{ marginTop: 0 }}>
+        {isLogin
+          ? 'Увійди, щоб прогрес, рівень і щоденні завдання зберігалися в акаунті й були доступні на всіх пристроях.'
+          : 'Акаунт зберігає прогрес на сервері: тести, Active Recall, XP, рівень і серію днів.'}
+      </p>
+      {providers.data?.google && (
+        <>
+          <a className="btn google" href={googleSignInUrl(next)} data-testid="google-signin">
+            <GoogleMark /> {isLogin ? 'Увійти через Google' : 'Зареєструватися через Google'}
+          </a>
+          <p className="or">або email і пароль</p>
+        </>
+      )}
+      <form className="form" onSubmit={(e) => void submit(e)} noValidate={false}>
+        {!isLogin && (
+          <label>
+            <span>Імʼя (необовʼязково)</span>
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              autoComplete="nickname"
+              maxLength={60}
+            />
+          </label>
+        )}
+        <label>
+          <span>Email</span>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </label>
+        <label>
+          <span>Пароль{isLogin ? '' : ' (щонайменше 8 символів)'}</span>
+          <input
+            type="password"
+            required
+            minLength={isLogin ? 1 : 8}
+            maxLength={128}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={isLogin ? 'current-password' : 'new-password'}
+          />
+        </label>
+        {error && (
+          <p className="err" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="actions">
+          <div className="left">
+            <button type="submit" className="btn primary" disabled={busy}>
+              {busy ? 'Зачекай…' : isLogin ? 'Увійти' : 'Створити акаунт'}
+            </button>
+          </div>
+          <Link
+            className="golink"
+            to={`${isLogin ? '/register' : '/login'}?next=${encodeURIComponent(next)}`}
+          >
+            {isLogin ? 'Немає акаунта? Зареєструватися' : 'Вже є акаунт? Увійти'}
+          </Link>
+        </div>
+      </form>
+      <p className="note">
+        Після входу ми запропонуємо перенести прогрес гостьового режиму та старої версії сайту в
+        акаунт.
+      </p>
+    </div>
+  );
+}
+
+/** `#/auth/google?code=…&next=…`: AuthProvider redeems the code; this only routes onwards. */
+export function GoogleDone() {
+  const { state } = useAuth();
+  const [params] = useSearchParams();
+  if (state.status === 'loading') return <p className="note">Входимо через Google…</p>;
+  if (state.status === 'guest') return <Navigate to="/login?error=google_failed" replace />;
+  return <Navigate to={params.get('next') || '/dash'} replace />;
+}
+
+/** Google "G" mark, as Google's branding guidelines ask for on sign-in buttons. */
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
+  );
+}
