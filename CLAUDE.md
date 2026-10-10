@@ -100,7 +100,7 @@ servers that are already up: stop them after changing API code.
 - Use explicit timestamps from the injected clock for logic (`QuestionState.answeredAt`), never
   Prisma `@updatedAt` (wall clock, breaks time-travel tests).
 - Sessions: 15-min HS256 access token in memory; 30-day refresh token in an httpOnly SameSite=Lax
-  cookie, stored hashed, rotated on use; reuse after a 30 s grace revokes the family. Only a 401 from
+  cookie (None+Partitioned in cross-site mode, with an Origin check on non-GET requests), stored hashed, rotated on use; reuse after a 30 s grace revokes the family. Only a 401 from
   `/auth/refresh` signs the client out (network errors don't). Login/register/import rate limited.
 - Google: code flow + PKCE on the server, state in a 10-min httpOnly cookie, claims checked
   (iss/aud/exp/email_verified), open-redirect guard on `next`. Linking a verified Google email to an
@@ -128,11 +128,12 @@ M8 — tests and deployment:
 1. ~~Playwright e2e tests, wired into CI~~ (done: `e2e/`).
 2. ~~Bundle split~~ (done: lazy route views; zod schemas live in `*.schema.ts` and `@qa-hub/shared` is
    `sideEffects: false`, so the web bundle has no zod. Keep schemas out of the runtime modules).
-3. Hosting: API + Postgres (Render/Railway/Fly). Keep the web app on GitHub Pages under the same
-   origin (`ryanchynskyi.github.io`) so the legacy `qa-hub-v1` save is auto-importable; set
-   `VITE_API_URL`, `WEB_ORIGIN`, `WEB_APP_URL`, `COOKIE_SECURE=true`. **Decide the cookie strategy:**
-   with the API on another site, the SameSite=Lax refresh cookie isn't sent on cross-site fetches —
-   either `SameSite=None; Secure` (+ CSRF consideration) or an API on a subdomain of a custom domain.
+3. Hosting (code done, accounts not created yet): API on Render free (`render.yaml`), Postgres on
+   Neon free, web stays on GitHub Pages. Cookie strategy decided: cross-site mode
+   (`COOKIE_SAMESITE=none` → `SameSite=None; Secure; Partitioned`, Origin check on writes); Google
+   callback hands the app a one-time code redeemed by fetch (`POST /auth/google/exchange`) so the
+   refresh cookie lands in the partitioned jar. `TRUST_PROXY=1` for per-IP rate limits — verify
+   `req.ip` in Render logs after the first deploy. Steps: README "Deploying".
 4. Google: add the production redirect URI, then publish the OAuth app.
 5. Switch Pages to an Actions build, revert the revert on `main`, merge `fullstack`, keep the legacy
    app reachable (e.g. `/legacy/`) during the transition.

@@ -119,6 +119,8 @@ export const api = {
   login: (body: LoginRequest) =>
     raw<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => raw<void>('/auth/logout', { method: 'POST' }),
+  googleExchange: (code: string) =>
+    raw<AuthResponse>('/auth/google/exchange', { method: 'POST', body: JSON.stringify({ code }) }),
   me: () => request<AuthUser>('/auth/me'),
   providers: () => request<{ google: boolean }>('/auth/providers'),
 

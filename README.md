@@ -63,6 +63,8 @@ exported from the old page can be imported later.
 | `GET /kb/search?q=`                                                       | All words must match; title hits rank first                                    |
 | `POST /auth/register`, `/auth/login`                                      | Email + password (argon2id); returns an access token, sets the refresh cookie  |
 | `POST /auth/refresh`, `/auth/logout`                                      | Rotating refresh token in an httpOnly cookie; reuse revokes the session family |
+| `GET /auth/google`, `/auth/google/callback`                               | Google sign-in (PKCE); the callback hands the app a one-time code              |
+| `POST /auth/google/exchange`                                              | One-time code → session, sets the refresh cookie                               |
 | `GET /auth/me`, `PATCH /me`                                               | Profile; time zone changeable once a day                                       |
 | `GET /me/progress`                                                        | Everything the UI needs; creates today's tasks on a new local day              |
 | `POST /me/quiz/finish`                                                    | Records a run; correctness comes from stored answers                           |
@@ -77,7 +79,8 @@ the server. Both run the same engine in `packages/shared/src/engine` (XP, levels
 daily tasks that reset at local midnight), so the rules are identical.
 
 Sessions: a 15-minute access token (JWT, kept in memory) plus a 30-day refresh token in an
-httpOnly, SameSite=Lax cookie. Refresh tokens are stored hashed and rotated on every use; replaying
+httpOnly, SameSite=Lax cookie (`SameSite=None; Secure; Partitioned` with `COOKIE_SAMESITE=none`, when
+the web app is on another site; writes from other origins are then refused). Refresh tokens are stored hashed and rotated on every use; replaying
 an old one ends the whole session family. Register/login are rate limited (10/min per IP). Server
 progress writes lock the user's row, so parallel requests can't double-count XP.
 
@@ -89,6 +92,11 @@ Authorization-code flow with PKCE, handled by the API; the browser never sees Go
 Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI` in `apps/api/.env`
 (create a "Web application" client under Google Auth Platform → Clients; for local dev the redirect
 URI is `http://localhost:5173/api/auth/google/callback`). Without them the button is hidden.
+
+The callback sets no session cookie: it redirects to `#/auth/google?code=…` with a one-time,
+two-minute code, which the app trades for a session with `POST /auth/google/exchange`. That way
+the refresh cookie is always set by a fetch, in the same (possibly partitioned) cookie jar as later
+refreshes, which matters when the API is on another site.
 
 A Google account signs into the user with the same verified email. If that user registered with a
 password but never verified the email, the password and its sessions are dropped on linking, since
@@ -112,3 +120,26 @@ site's save is never modified; moved guest progress is kept as a backup under `q
 `npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.
 They use `TEST_DATABASE_URL` (`qahub_test`), which the test setup creates, migrates and seeds; tests
 create their own users. Without the variable they are skipped. CI runs them against a Postgres service.
+
+`npm run e2e` runs Playwright end-to-end tests (`e2e/`) against a fresh build of the web app and
+a dedicated API (`apps/api/scripts/e2e-server.ts`: own `qahub_e2e` database, Google replaced by a
+test-only consent screen). First time: `npx playwright install chromium`.
+
+## Deploying
+
+The web app stays on GitHub Pages (`ryanchynskyi.github.io`, the same origin as the old site, so its
+save can be imported automatically). The API runs on Render's free plan with Neon's free Postgres;
+`render.yaml` describes the service.
+
+1. Neon: create a project (region near Frankfurt) and copy the **direct** connection string
+   (with `?sslmode=require`).
+2. Render: New → Blueprint → this repository. Fill in `DATABASE_URL`; the build migrates and seeds.
+   `GET https://<service>.onrender.com/health` should report the content counts.
+3. Google (optional): add `https://<service>.onrender.com/auth/google/callback` as a redirect URI,
+   set the three `GOOGLE_*` variables on Render, then publish the OAuth app.
+4. Build the web app with `VITE_API_URL=https://<service>.onrender.com`.
+
+Free-plan caveats: the API sleeps after 15 idle minutes and the next request takes about a minute
+(the app shows its loading state meanwhile). Cross-site cookies need the `Partitioned` attribute;
+browsers that block third-party cookies without supporting it (older Safari) keep the session only
+until the tab reloads.

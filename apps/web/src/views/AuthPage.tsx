@@ -133,6 +133,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   );
 }
 
+/** `#/auth/google?code=…&next=…`: AuthProvider redeems the code; this only routes onwards. */
+export function GoogleDone() {
+  const { state } = useAuth();
+  const [params] = useSearchParams();
+  if (state.status === 'loading') return <p className="note">Входимо через Google…</p>;
+  if (state.status === 'guest') return <Navigate to="/login?error=google_failed" replace />;
+  return <Navigate to={params.get('next') || '/dash'} replace />;
+}
+
 /** Google "G" mark, as Google's branding guidelines ask for on sign-in buttons. */
 function GoogleMark() {
   return (

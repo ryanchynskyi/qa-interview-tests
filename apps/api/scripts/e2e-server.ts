@@ -34,8 +34,8 @@ const app = await buildApp({
   webOrigin,
   jwtSecret: 'e2e-secret-that-is-long-enough-1234567890',
   google: fakeGoogle,
-  // Every test registers fresh users from the same IP.
-  authRateLimit: 10_000,
+  // Every test browser comes from the same IP.
+  rateLimits: false,
 });
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);

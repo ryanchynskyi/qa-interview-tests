@@ -18,12 +18,31 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** The one-time code the Google callback put in the URL (`#/auth/google?code=…`), if any. */
+function googleLoginCode(): string | null {
+  const [path, query = ''] = window.location.hash.slice(1).split('?');
+  return path === '/auth/google' ? new URLSearchParams(query).get('code') : null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
 
   useEffect(() => {
     // Any session change (refresh, expiry) flows through here.
     onSession((s) => setState(s ? { status: 'user', user: s.user } : { status: 'guest' }));
+    // Back from Google: trade the one-time code for a session. This replaces the refresh
+    // below, whose 401 (no cookie yet) would otherwise race it and sign the user out.
+    const code = googleLoginCode();
+    if (code) {
+      api
+        .googleExchange(code)
+        .then((s) => {
+          setAccessToken(s.accessToken);
+          setState({ status: 'user', user: s.user });
+        })
+        .catch(() => setState({ status: 'guest' }));
+      return;
+    }
     // Restore the session from the httpOnly refresh cookie, if there is one. If the API
     // can't be reached at all, continue as a guest; nothing on the server is lost.
     refreshSession().catch(() => setState({ status: 'guest' }));

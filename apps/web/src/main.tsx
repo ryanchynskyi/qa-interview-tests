@@ -17,6 +17,7 @@ const views = {
   login: () => import('./views/AuthPage').then((m) => ({ element: <m.AuthPage mode="login" /> })),
   register: () =>
     import('./views/AuthPage').then((m) => ({ element: <m.AuthPage mode="register" /> })),
+  googleDone: () => import('./views/AuthPage').then((m) => ({ Component: m.GoogleDone })),
   import: () => import('./views/ImportPage').then((m) => ({ Component: m.ImportPage })),
   profile: () => import('./views/Profile').then((m) => ({ Component: m.Profile })),
 };
@@ -34,6 +35,7 @@ const router = createHashRouter([
       { path: 'kb/:topicId?/:chapterId?/:art?', lazy: views.kb },
       { path: 'login', lazy: views.login },
       { path: 'register', lazy: views.register },
+      { path: 'auth/google', lazy: views.googleDone },
       { path: 'import', lazy: views.import },
       { path: 'profile', lazy: views.profile },
       { path: '*', element: <Navigate to="/dash" replace /> },

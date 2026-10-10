@@ -17,6 +17,10 @@ test('signs in with Google and lands back in the app', async ({ page }) => {
   await expect(page).toHaveURL(/#\/profile$/);
   await expect(page.getByTestId('account')).toContainText('Google Тестер');
   await expect(page.getByTestId('account')).toContainText(email);
+
+  // The refresh cookie came from the app's own fetch, so a reload restores the session.
+  await page.reload();
+  await expect(page.getByTestId('account')).toContainText(email);
 });
 
 test('cancelling at Google shows a message on the login page', async ({ page }) => {

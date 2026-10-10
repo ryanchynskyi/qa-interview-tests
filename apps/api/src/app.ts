@@ -24,7 +24,7 @@ declare module 'fastify' {
     db: PrismaClient;
     /** Injected clock: tests move time across local midnights. */
     now: () => number;
-    auth: { jwtSecret: string; cookieSecure: boolean; rateLimit: number };
+    auth: { jwtSecret: string; cookieSecure: boolean; crossSite: boolean; rateLimit: number };
     catalog: () => Promise<Catalog>;
     progress: ProgressService;
     /** Null when GOOGLE_* isn't configured. */
@@ -43,13 +43,19 @@ export interface AppDeps {
   webOrigin: string;
   jwtSecret: string;
   cookieSecure?: boolean;
+  /** The web app is on another site: SameSite=None; Partitioned refresh cookie. */
+  crossSiteCookies?: boolean;
   now?: () => number;
   /** Register/login attempts per IP per minute (tests raise it). */
   authRateLimit?: number;
+  /** False turns all per-IP rate limits off (e2e tests: every browser shares one IP). */
+  rateLimits?: boolean;
   google?: GoogleOAuth | null;
   /** Defaults to `${webOrigin}/`. */
   webAppUrl?: string;
   logger?: FastifyServerOptions['logger'];
+  /** Proxy hops to trust for the client IP (X-Forwarded-For); see TRUST_PROXY. */
+  trustProxy?: boolean | number;
 }
 
 /**
@@ -61,17 +67,32 @@ export async function buildApp({
   webOrigin,
   jwtSecret,
   cookieSecure = false,
+  crossSiteCookies = false,
   now = Date.now,
   authRateLimit = 10,
+  rateLimits = true,
   google = null,
   webAppUrl = `${webOrigin}/`,
   logger = false,
+  trustProxy = false,
 }: AppDeps) {
-  const app = Fastify({ logger });
+  const app = Fastify({
+    logger,
+    // A hop count trusts only the last n addresses in X-Forwarded-For (the hosting proxies').
+    trustProxy:
+      typeof trustProxy === 'number'
+        ? (_addr: string, hop: number) => hop < trustProxy
+        : trustProxy,
+  });
 
   app.decorate('db', db);
   app.decorate('now', now);
-  app.decorate('auth', { jwtSecret, cookieSecure, rateLimit: authRateLimit });
+  app.decorate('auth', {
+    jwtSecret,
+    cookieSecure,
+    crossSite: crossSiteCookies,
+    rateLimit: authRateLimit,
+  });
   app.decorate('catalog', catalogCache(db));
   app.decorate('progress', new ProgressService(db, app.catalog, now));
   app.decorate('google', google);
@@ -96,9 +117,19 @@ export async function buildApp({
   });
 
   await app.register(cors, { origin: webOrigin, credentials: true });
+  // CSRF guard: browsers send Origin on every cross-origin and every POST request, so a
+  // write from any other site is refused. Requests without Origin (curl, tests) pass; they
+  // can't carry a victim's cookies anyway.
+  app.addHook('onRequest', async (req) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
+    const origin = req.headers.origin;
+    if (origin !== undefined && origin !== webOrigin) {
+      throw new HttpError(403, 'bad_origin', 'Request from another site');
+    }
+  });
   await app.register(cookie);
   // Opt-in per route via `config.rateLimit`.
-  await app.register(rateLimit, { global: false });
+  if (rateLimits) await app.register(rateLimit, { global: false });
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof ZodError) {

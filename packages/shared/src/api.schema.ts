@@ -66,3 +66,8 @@ export const deleteAccountSchema = z.object({
   /** Typed by the user to confirm; must equal the account email. */
   confirmEmail: z.string().trim().toLowerCase().max(254),
 });
+
+/** One-time code from the Google callback (`#/auth/google?code=…`). */
+export const googleExchangeSchema = z.object({
+  code: z.string().min(20).max(100),
+});

@@ -19,6 +19,21 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
+  /**
+   * `none` when the web app is on another site than the API (GitHub Pages + a hosted API):
+   * the refresh cookie becomes `SameSite=None; Secure; Partitioned`. Requires HTTPS.
+   */
+  COOKIE_SAMESITE: z.enum(['lax', 'none']).default('lax'),
+  /**
+   * Behind a hosting proxy: how many proxy hops to trust in X-Forwarded-For, so rate limits
+   * see the client's IP instead of the proxy's. A hop count (e.g. 1) is safer than `true`,
+   * which also trusts addresses a client put there itself.
+   */
+  TRUST_PROXY: z
+    .string()
+    .regex(/^(true|false|\d+)$/, 'TRUST_PROXY: true, false or a hop count')
+    .default('false')
+    .transform((v) => (v === 'true' ? true : v === 'false' ? false : Number(v))),
 });
 
 export type Config = z.infer<typeof envSchema> & { cookieSecure: boolean };
@@ -31,5 +46,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(`Invalid environment configuration:\n${issues}\nSee .env.example.`);
   }
   const c = parsed.data;
-  return { ...c, cookieSecure: c.COOKIE_SECURE ?? c.NODE_ENV === 'production' };
+  const cookieSecure = c.COOKIE_SECURE ?? c.NODE_ENV === 'production';
+  if (c.COOKIE_SAMESITE === 'none' && !cookieSecure) {
+    throw new Error('COOKIE_SAMESITE=none needs secure cookies: set COOKIE_SECURE=true (HTTPS).');
+  }
+  return { ...c, cookieSecure };
 }

@@ -40,7 +40,7 @@ export async function answerQuestions(page: Page, n: number): Promise<number> {
     await expect(card.locator('.verdict')).toBeVisible();
     const gain = card.locator('.xpgain');
     if (await gain.count()) xp += Number((await gain.textContent())!.replace(/\D/g, ''));
-    await card.getByRole('button', { name: 'Далі' }).click();
+    await card.getByRole('button', { name: 'Далі', exact: true }).click();
     if (i < n - 1) await expect(card.locator('.verdict')).toHaveCount(0);
   }
   return xp;

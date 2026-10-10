@@ -8,14 +8,16 @@ test('guest progress is scored by the shared engine and survives a reload', asyn
   expect(await totalXp(page)).toBe(0);
 
   await readFirstArticle(page);
-  await expect.poll(() => totalXp(page)).toBe(2); // XP_RULES.articleFirstRead
+  // XP_RULES.articleFirstRead, plus a daily task's reward if today's tasks include this chapter.
+  await expect.poll(() => totalXp(page)).toBeGreaterThanOrEqual(2);
+  const afterReading = await totalXp(page);
 
   await startQuiz(page, 'sql');
   const quizXp = await answerQuestions(page, 3);
-  await expect.poll(() => totalXp(page)).toBe(2 + quizXp);
+  await expect.poll(() => totalXp(page)).toBe(afterReading + quizXp);
 
   await page.reload();
-  await expect.poll(() => totalXp(page)).toBe(2 + quizXp);
+  await expect.poll(() => totalXp(page)).toBe(afterReading + quizXp);
 });
 
 test('legacy deep links still open the right view', async ({ page }) => {

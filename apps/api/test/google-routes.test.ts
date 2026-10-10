@@ -3,7 +3,16 @@ import { randomUUID } from 'node:crypto';
 import type { AuthResponse } from '@qa-hub/shared';
 import { buildApp } from '../src/app';
 import type { GoogleIdentity, GoogleOAuth } from '../src/auth/google';
+import { hashToken } from '../src/auth/tokens';
 import { JWT_SECRET, refreshCookie, register, testDb, TEST_URL, uniqueEmail } from './helpers';
+
+/** The app route the callback lands on: `#/auth/google?code=…&next=…`. */
+function landing(cb: { headers: Record<string, unknown> }) {
+  const hash = new URL(String(cb.headers.location)).hash;
+  const [path, query = ''] = hash.slice(1).split('?');
+  const p = new URLSearchParams(query);
+  return { path, loginCode: p.get('code'), next: p.get('next') };
+}
 
 /** Stands in for Google: the "code" names the identity to return. */
 function fakeGoogle(identities: Map<string, GoogleIdentity>): GoogleOAuth {
@@ -48,8 +57,12 @@ describe.skipIf(!TEST_URL)('Google sign-in routes', () => {
       url: `/auth/google/callback?code=${code}&state=${state}`,
       headers: { cookie: oauthCookie },
     });
-    return { start, cb, state, oauthCookie, code };
+    const { loginCode } = landing(cb);
+    const ex = loginCode ? await exchange(loginCode) : undefined;
+    return { start, cb, ex, loginCode, state, oauthCookie, code };
   }
+  const exchange = (code: string) =>
+    app.inject({ method: 'POST', url: '/auth/google/exchange', payload: { code } });
   const refreshWith = (cookie: string) =>
     app.inject({ method: 'POST', url: '/auth/refresh', headers: { cookie } });
 
@@ -73,10 +86,16 @@ describe.skipIf(!TEST_URL)('Google sign-in routes', () => {
 
   it('creates a passwordless, verified account and starts a session', async () => {
     const email = uniqueEmail();
-    const { cb } = await signIn({ email, name: 'Ольга' }, '/quiz/sql');
+    const { cb, ex } = await signIn({ email, name: 'Ольга' }, '/quiz/sql');
     expect(cb.statusCode).toBe(302);
-    expect(cb.headers.location).toBe('http://localhost:5173/#/quiz/sql');
-    const session = await refreshWith(refreshCookie(cb)!);
+    expect(cb.headers.location).toMatch(
+      /^http:\/\/localhost:5173\/#\/auth\/google\?code=[\w-]{40,}&next=%2Fquiz%2Fsql$/,
+    );
+    // The callback navigation itself sets no session cookie; the app's fetch exchange does.
+    expect(refreshCookie(cb)).toBeUndefined();
+    expect(ex!.statusCode).toBe(200);
+    expect(ex!.json<AuthResponse>().user.email).toBe(email);
+    const session = await refreshWith(refreshCookie(ex!)!);
     expect(session.statusCode).toBe(200);
     expect(session.json<AuthResponse>().user).toMatchObject({
       email,
@@ -98,8 +117,8 @@ describe.skipIf(!TEST_URL)('Google sign-in routes', () => {
 
   it('links to an existing password account with the same email, dropping the unproven password', async () => {
     const r = await register(app); // email/password account, email never verified
-    const { cb } = await signIn({ email: r.email });
-    const session = await refreshWith(refreshCookie(cb)!);
+    const { ex } = await signIn({ email: r.email });
+    const session = await refreshWith(refreshCookie(ex!)!);
     expect(session.json<AuthResponse>().user.id).toBe(r.user.id);
 
     // Whoever set that password may not own the inbox: it's gone, and so are its sessions.
@@ -110,6 +129,24 @@ describe.skipIf(!TEST_URL)('Google sign-in routes', () => {
       payload: { email: r.email, password: 'correct horse battery' },
     });
     expect(login.statusCode).toBe(401);
+  });
+
+  it('login codes work once and expire', async () => {
+    const { loginCode, ex } = await signIn({ email: uniqueEmail() });
+    expect(ex!.statusCode).toBe(200);
+    const again = await exchange(loginCode!);
+    expect(again.statusCode).toBe(401);
+    expect(again.json()).toMatchObject({ error: 'google_code_invalid' });
+
+    const user = await testDb().user.findUniqueOrThrow({
+      where: { id: ex!.json<AuthResponse>().user.id },
+    });
+    const stale = randomUUID() + randomUUID();
+    await testDb().loginCode.create({
+      data: { codeHash: hashToken(stale), userId: user.id, expiresAt: new Date(Date.now() - 1000) },
+    });
+    expect((await exchange(stale)).statusCode).toBe(401);
+    expect((await exchange('x'.repeat(43))).statusCode).toBe(401);
   });
 
   it('refuses unverified Google emails', async () => {
@@ -145,7 +182,7 @@ describe.skipIf(!TEST_URL)('Google sign-in routes', () => {
   it('never redirects outside the app (open-redirect guard)', async () => {
     for (const next of ['//evil.example', 'https://evil.example', '/ok\\@evil']) {
       const { cb } = await signIn({ email: uniqueEmail() }, next);
-      expect(cb.headers.location).toBe('http://localhost:5173/#/dash');
+      expect(landing(cb)).toMatchObject({ path: '/auth/google', next: '/dash' });
     }
   });
 

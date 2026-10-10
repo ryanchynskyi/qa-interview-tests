@@ -127,6 +127,7 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   refreshTokens  RefreshToken[]
+  loginCodes     LoginCode[]
   oauthAccounts  OAuthAccount[]
   stats          UserStats?
   questionStates QuestionState[]
@@ -149,6 +150,19 @@ model OAuthAccount {
 
   @@id([provider, providerUserId])
   @@index([userId])
+}
+
+/// One-time code from the Google callback, stored hashed. The web app trades it for a session
+/// with a fetch, so the refresh cookie is set in the same (possibly partitioned) cookie jar
+/// as later refreshes; a cookie set on the callback navigation would land in another one.
+model LoginCode {
+  codeHash  String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 /// Opaque refresh tokens, stored hashed. Rotated on every use; a token reused after

@@ -1,0 +1,45 @@
+# Render Blueprint for the API (free plan). The database is Neon's free Postgres: Render's own free
+# Postgres is deleted after 30 days. The web app stays on GitHub Pages, so the API runs in
+# cross-site cookie mode (COOKIE_SAMESITE=none). Setup steps: README, "Deploying".
+services:
+  - type: web
+    name: qa-hub-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    # Switch to main once fullstack is merged (M8 step 5).
+    branch: fullstack
+    # Dev dependencies are needed to build: prisma CLI (migrations) and tsx (runs the TypeScript).
+    buildCommand: npm ci --include=dev && npm run db:deploy -w @qa-hub/api && npm run db:seed
+    startCommand: node --import tsx apps/api/src/server.ts
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Neon connection string (direct, not pooled), with ?sslmode=require.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WEB_ORIGIN
+        value: https://ryanchynskyi.github.io
+      - key: WEB_APP_URL
+        value: https://ryanchynskyi.github.io/qa-interview-tests/
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: COOKIE_SAMESITE
+        value: none
+      # Render's proxy appends the client address; check req.ip in the logs after the first deploy.
+      - key: TRUST_PROXY
+        value: '1'
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # https://<service>.onrender.com/auth/google/callback
+      - key: GOOGLE_REDIRECT_URI
+        sync: false

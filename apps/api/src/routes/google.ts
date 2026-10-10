@@ -1,13 +1,16 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@prisma/client';
-import { isValidTimeZone } from '@qa-hub/shared';
+import { googleExchangeSchema, isValidTimeZone } from '@qa-hub/shared';
 import { newPkceVerifier, pkceChallenge, type GoogleIdentity } from '../auth/google';
 import { issueSession } from '../auth/session';
+import { hashToken } from '../auth/tokens';
 import { HttpError } from '../lib/errors';
 
 const OAUTH_COOKIE = 'qa_oauth';
 const OAUTH_TTL_SECONDS = 10 * 60;
+/** The web app redeems the login code right after the redirect. */
+const LOGIN_CODE_TTL_MS = 2 * 60_000;
 
 /** Only in-app hash routes: blocks open redirects like `//evil.example`. */
 const safeNext = (v: unknown) =>
@@ -154,13 +157,43 @@ export const googleRoutes: FastifyPluginAsync = async (app) => {
       try {
         const identity = await app.google.exchangeCode(req.query.code, saved.v);
         const user = await userForGoogle(app.db, identity, saved.tz, app.now());
-        // Sets the refresh cookie; the app picks the session up with /auth/refresh on load.
-        await issueSession(app, reply, user);
-        return toApp(reply, saved.n);
+        // No session cookie here: on this navigation it would be first-party, while the app's
+        // later refreshes are cross-site fetches with their own (partitioned) cookie jar. The
+        // app trades this code for a session with a fetch instead (POST /auth/google/exchange).
+        const code = randomBytes(32).toString('base64url');
+        const now = app.now();
+        await app.db.loginCode.deleteMany({ where: { expiresAt: { lt: new Date(now) } } });
+        await app.db.loginCode.create({
+          data: {
+            codeHash: hashToken(code),
+            userId: user.id,
+            expiresAt: new Date(now + LOGIN_CODE_TTL_MS),
+          },
+        });
+        return toApp(reply, `/auth/google?code=${code}&next=${encodeURIComponent(saved.n)}`);
       } catch (e) {
         req.log.warn({ err: e }, 'google sign-in failed');
         return fail(reply, e instanceof HttpError ? e.code : 'google_failed');
       }
+    },
+  );
+
+  app.post(
+    '/auth/google/exchange',
+    { config: { rateLimit: { max: app.auth.rateLimit, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const { code } = googleExchangeSchema.parse(req.body);
+      const codeHash = hashToken(code);
+      const row = await app.db.loginCode.findUnique({
+        where: { codeHash },
+        include: { user: true },
+      });
+      // deleteMany's count makes redemption single-use even for concurrent requests.
+      const { count } = await app.db.loginCode.deleteMany({ where: { codeHash } });
+      if (!row || count === 0 || row.expiresAt.getTime() <= app.now()) {
+        throw new HttpError(401, 'google_code_invalid', 'Login code is invalid or expired');
+      }
+      return issueSession(app, reply, row.user);
     },
   );
 };

@@ -22,9 +22,12 @@ export const toAuthUser = (u: UserRow): AuthUser => ({
 
 export const cookieOptions = (app: FastifyInstance) => ({
   httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: app.auth.cookieSecure,
   path: '/',
+  ...(app.auth.crossSite
+    ? // Cross-site fetches only carry SameSite=None cookies; Partitioned (CHIPS) keeps them
+      // working where unpartitioned third-party cookies are blocked.
+      { sameSite: 'none' as const, secure: true, partitioned: true }
+    : { sameSite: 'lax' as const, secure: app.auth.cookieSecure }),
 });
 
 /** New refresh token (same family on rotation) + access token; sets the cookie on the reply. */
