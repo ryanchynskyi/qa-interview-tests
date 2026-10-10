@@ -10,6 +10,10 @@ interface AuthContextValue {
   login: (body: LoginRequest) => Promise<void>;
   register: (body: Omit<RegisterRequest, 'timeZone'>) => Promise<void>;
   logout: () => Promise<void>;
+  /** After a profile edit (name, time zone). */
+  updateUser: (user: AuthUser) => void;
+  /** After the account was deleted: the server already cleared the cookie. */
+  forget: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
         }),
       ),
+    updateUser: (user) => setState((s) => (s.status === 'user' ? { status: 'user', user } : s)),
+    forget: () => {
+      setAccessToken(null);
+      setState({ status: 'guest' });
+    },
     logout: async () => {
       try {
         await api.logout();

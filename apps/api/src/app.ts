@@ -10,6 +10,7 @@ import { verifyAccessToken } from './auth/tokens';
 import { catalogCache } from './content/catalog';
 import { HttpError, unauthorized } from './lib/errors';
 import { ProgressService } from './progress/service';
+import { accountRoutes } from './routes/account';
 import { authRoutes } from './routes/auth';
 import { googleRoutes } from './routes/google';
 import { contentRoutes } from './routes/content';
@@ -128,6 +129,7 @@ export async function buildApp({
   await app.register(authRoutes);
   await app.register(googleRoutes);
   await app.register(meRoutes);
+  await app.register(accountRoutes);
 
   return app;
 }

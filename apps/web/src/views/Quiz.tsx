@@ -387,10 +387,14 @@ function RunView({
       const { check, result } = await store.answer(q, topicId, choice);
       const verdict: Verdict =
         check.outcome === 'correct' ? 'y' : check.outcome === 'wrong' ? 'n' : 's';
+      // Only the answer's own XP here; task/streak bonuses get their own notifications.
+      const answerXp = result.grants
+        .filter((g) => g.reason === 'answer_first_correct' || g.reason === 'answer_repeat')
+        .reduce((n, g) => n + g.amount, 0);
       update((r) => ({
         ...r,
         pending: false,
-        answer: { choice, check, xp: result.xpGained },
+        answer: { choice, check, xp: answerXp },
         res: { ...r.res, [q.id]: verdict },
       }));
       setTimeout(() => nextRef.current?.focus({ preventScroll: true }), 0);

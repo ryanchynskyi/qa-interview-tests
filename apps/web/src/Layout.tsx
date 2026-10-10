@@ -1,8 +1,11 @@
+import { useCallback } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { currentStreak, levelFromXp, localDate, type ActivityResult } from '@qa-hub/shared';
 import { useAuth } from './auth/AuthProvider';
-import { levelFromXp } from '@qa-hub/shared';
+import { useCatalog } from './hooks/content';
 import { useNow } from './lib/stores';
-import { useProgress } from './progress/ProgressProvider';
+import { Toasts, useActivityToasts } from './lib/toasts';
+import { useProgress, useStore } from './progress/ProgressProvider';
 import { ImportBanner } from './views/ImportBanner';
 
 const VIEWS = [
@@ -13,8 +16,10 @@ const VIEWS = [
 ];
 
 function LevelChip() {
-  const { stats } = useProgress();
+  const { stats, timeZone } = useProgress();
+  const now = useNow();
   const lvl = levelFromXp(stats.totalXp);
+  const streak = currentStreak(stats, localDate(now, timeZone));
   return (
     <div className="lvlchip" data-testid="level">
       <span>
@@ -28,6 +33,12 @@ function LevelChip() {
       <span>
         {lvl.xpIntoLevel} / {lvl.xpForNext} XP · усього {stats.totalXp}
       </span>
+      <span data-testid="streak" title={`Найдовша серія: ${stats.longestStreak} дн.`}>
+        {streak > 0 ? `Серія: ${streak} дн. поспіль` : 'Серії поки немає: виконай завдання дня'}
+      </span>
+      <Link to="/profile" className="golink" style={{ marginTop: 0 }}>
+        Профіль →
+      </Link>
     </div>
   );
 }
@@ -48,7 +59,8 @@ function Account() {
   }
   return (
     <p className="guest" data-testid="account">
-      Привіт, <b>{state.user.displayName}</b> · прогрес зберігається в акаунті ({state.user.email}).{' '}
+      Привіт, <Link to="/profile">{state.user.displayName}</Link> · прогрес зберігається в акаунті (
+      {state.user.email}).{' '}
       <button type="button" className="linkbtn" onClick={() => void logout()}>
         Вийти
       </button>
@@ -58,6 +70,10 @@ function Account() {
 
 export function Layout() {
   const progress = useProgress();
+  const store = useStore();
+  const { data: catalog } = useCatalog();
+  const subscribe = useCallback((fn: (r: ActivityResult) => void) => store.onActivity(fn), [store]);
+  useActivityToasts(subscribe, catalog);
   const { pathname } = useLocation();
   const now = useNow();
   const due = Object.values(progress.cards).filter((c) => c.dueAt <= now).length;
@@ -90,6 +106,7 @@ export function Layout() {
       <main>
         <Outlet />
       </main>
+      <Toasts />
       <footer>
         <span className="note">
           {section === 'quiz'

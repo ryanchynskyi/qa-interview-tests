@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router';
-import { chapterScores, topicSkills, WEAK_THRESHOLD } from '@qa-hub/shared';
+import { chapterScores, topicBadge, topicSkills, WEAK_THRESHOLD } from '@qa-hub/shared';
 import { useCatalog, useCatalogIndex } from '../hooks/content';
 import { useNow } from '../lib/stores';
 import { LoadError, Loading, pct, scoreColor } from '../lib/ui';
 import { useSkillProgress } from '../progress/ProgressProvider';
+import { TodayCard } from './TodayCard';
+
+const BADGE_LABEL = { gold: 'Золото', silver: 'Срібло', bronze: 'Бронза' } as const;
 
 export function Dashboard() {
   const { data: catalog, error, refetch } = useCatalog();
@@ -30,6 +33,7 @@ export function Dashboard() {
 
   return (
     <>
+      <TodayCard catalog={idx.catalog} />
       <div className="dgrid">
         {view.skills.map((s) => {
           const q = s.quiz;
@@ -37,7 +41,17 @@ export function Dashboard() {
           return (
             <div className="sk" key={s.topicId} data-testid={`skill-${s.topicId}`}>
               <div className="hd">
-                <b>{idx.topicName.get(s.topicId)}</b>
+                <b>
+                  {idx.topicName.get(s.topicId)}{' '}
+                  {s.tested && topicBadge(s.skill) && (
+                    <span
+                      className={`badge ${topicBadge(s.skill)}`}
+                      title="Нагорода за рівень теми"
+                    >
+                      {BADGE_LABEL[topicBadge(s.skill)!]}
+                    </span>
+                  )}
+                </b>
                 {s.tested ? (
                   <span className="pct" style={{ color: scoreColor(s.skill) }}>
                     {pct(s.skill)}

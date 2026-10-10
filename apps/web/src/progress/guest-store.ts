@@ -88,6 +88,7 @@ export class GuestStore implements ProgressRepo {
   readonly kind = 'guest' as const;
   private state: ProgressState;
   private listeners = new Set<() => void>();
+  private activityListeners = new Set<(r: ActivityResult) => void>();
   private catalog: Catalog | null = null;
   private readonly now: () => number;
   private readonly tz: () => string;
@@ -106,6 +107,11 @@ export class GuestStore implements ProgressRepo {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   };
+
+  onActivity(fn: (r: ActivityResult) => void): () => void {
+    this.activityListeners.add(fn);
+    return () => this.activityListeners.delete(fn);
+  }
 
   /** Another tab wrote progress: pick it up. */
   reload(): void {
@@ -189,6 +195,7 @@ export class GuestStore implements ProgressRepo {
       daily: result.daily,
       xpLog: [...s.xpLog, ...logged].slice(-XP_LOG_SIZE),
     });
+    for (const fn of this.activityListeners) fn(result);
     return result;
   }
 

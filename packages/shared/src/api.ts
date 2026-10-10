@@ -238,3 +238,32 @@ export const rateCardSchema = z.object({
   cardId: z.string().min(1).max(64),
   rating: z.number().int().min(1).max(5),
 });
+
+/* ---------- account (profile page) ---------- */
+
+export interface AccountInfo extends AuthUser {
+  createdAt: number;
+  /** False for Google-only accounts until they set one. */
+  hasPassword: boolean;
+  /** Linked sign-in providers, e.g. ['google']. */
+  providers: string[];
+  /** When the time zone may change again (once a day); null if now. */
+  timeZoneLockedUntil: number | null;
+}
+
+export const changePasswordSchema = z.object({
+  /** Required when the account already has a password. */
+  currentPassword: z.string().min(1).max(128).optional(),
+  newPassword: password,
+});
+
+export const deleteAccountSchema = z.object({
+  /** Typed by the user to confirm; must equal the account email. */
+  confirmEmail: z.string().trim().toLowerCase().max(254),
+});
+
+/** XP earned per local day, oldest first. */
+export interface XpDay {
+  date: string;
+  xp: number;
+}

@@ -9,6 +9,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { ProgressProvider } from './progress/ProgressProvider';
 import { AuthPage } from './views/AuthPage';
 import { ImportPage } from './views/ImportPage';
+import { Profile } from './views/Profile';
 import { Dashboard } from './views/Dashboard';
 import { KnowledgeBase } from './views/KnowledgeBase';
 import { Quiz } from './views/Quiz';
@@ -28,6 +29,7 @@ const router = createHashRouter([
       { path: 'login', element: <AuthPage mode="login" /> },
       { path: 'register', element: <AuthPage mode="register" /> },
       { path: 'import', element: <ImportPage /> },
+      { path: 'profile', element: <Profile /> },
       { path: '*', element: <Navigate to="/dash" replace /> },
     ],
   },

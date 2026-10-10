@@ -39,6 +39,8 @@ export interface ProgressRepo {
   readArticle(articleId: string, chapterId: string, topicId: string): Promise<ActivityResult>;
   resetSection(sectionId: string, questionIds: readonly string[]): Promise<void>;
   setLastSection(sectionId: string): void;
+  /** Called after every recorded activity (tasks, bonuses, level-ups → notifications). */
+  onActivity(fn: (result: ActivityResult) => void): () => void;
   /** Merges guest/legacy progress in; existing items win, XP is recomputed. */
   importProgress(payload: ImportPayload): Promise<ImportResult>;
 }

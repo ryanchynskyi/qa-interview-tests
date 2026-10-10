@@ -3,6 +3,7 @@ import type { CardProgress } from '../../src/engine/items';
 import {
   chapterScores,
   dueCardIds,
+  topicBadge,
   topicSkills,
   weakChapters,
   type SkillContent,
@@ -81,5 +82,20 @@ describe('dueCardIds', () => {
     const progress = { questions: {}, cards: { c1: card(1, now), c2: card(5, now + 1) } };
     expect(dueCardIds(progress, now)).toEqual(['c1']);
     expect(topicSkills(content, progress, now)[0]?.recall.due).toBe(1);
+  });
+});
+
+describe('topicBadge', () => {
+  it('awards bronze, silver and gold at 60/75/90%', () => {
+    expect([0, 0.59, 0.6, 0.74, 0.75, 0.89, 0.9, 1].map(topicBadge)).toEqual([
+      null,
+      null,
+      'bronze',
+      'bronze',
+      'silver',
+      'silver',
+      'gold',
+      'gold',
+    ]);
   });
 });

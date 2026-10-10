@@ -1,4 +1,5 @@
 import type {
+  AccountInfo,
   ApiError,
   AuthResponse,
   AuthUser,
@@ -15,6 +16,7 @@ import type {
   RecallCardDto,
   RegisterRequest,
   SearchHit,
+  XpDay,
 } from '@qa-hub/shared';
 
 /** Same-origin `/api` in dev (Vite proxy); set VITE_API_URL for a separately hosted API. */
@@ -119,6 +121,16 @@ export const api = {
   logout: () => raw<void>('/auth/logout', { method: 'POST' }),
   me: () => request<AuthUser>('/auth/me'),
   providers: () => request<{ google: boolean }>('/auth/providers'),
+
+  /* profile */
+  account: () => request<AccountInfo>('/me/account'),
+  updateMe: (body: { displayName?: string; timeZone?: string }) =>
+    request<AuthUser>('/me', { method: 'PATCH', body: JSON.stringify(body) }),
+  changePassword: (body: { currentPassword?: string; newPassword: string }) =>
+    post<void>('/me/password', body),
+  xpHistory: (days = 30) => request<XpDay[]>(`/me/xp-history?days=${days}`),
+  deleteAccount: (confirmEmail: string) =>
+    request<void>('/me', { method: 'DELETE', body: JSON.stringify({ confirmEmail }) }),
 
   /* signed-in progress */
   progress: () => request<PlayerProgress>('/me/progress'),

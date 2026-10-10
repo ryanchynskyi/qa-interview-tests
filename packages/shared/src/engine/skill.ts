@@ -178,3 +178,13 @@ export function dueCardIds(progress: SkillProgress, now: number): string[] {
     .filter(([, c]) => isCardDue(c, now))
     .map(([id]) => id);
 }
+
+export type TopicBadge = 'bronze' | 'silver' | 'gold';
+
+/** Topic mastery badge from the 0..1 skill score: 60% bronze, 75% silver, 90% gold. */
+export function topicBadge(skill: number): TopicBadge | null {
+  if (skill >= 0.9) return 'gold';
+  if (skill >= 0.75) return 'silver';
+  if (skill >= 0.6) return 'bronze';
+  return null;
+}

@@ -43,6 +43,7 @@ export class ServerStore implements ProgressRepo {
   readonly kind = 'server' as const;
   private state: ProgressState | null = null;
   private listeners = new Set<() => void>();
+  private activityListeners = new Set<(r: ActivityResult) => void>();
   private loading: Promise<void> | null = null;
   private readonly now: () => number;
 
@@ -65,6 +66,11 @@ export class ServerStore implements ProgressRepo {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   };
+
+  onActivity(fn: (r: ActivityResult) => void): () => void {
+    this.activityListeners.add(fn);
+    return () => this.activityListeners.delete(fn);
+  }
 
   private set(next: ProgressState) {
     this.state = next;
@@ -111,6 +117,7 @@ export class ServerStore implements ProgressRepo {
       next.attempts = { ...s.attempts, [u.attempt.sectionId]: list.slice(0, ATTEMPTS_SHOWN) };
     }
     this.set(next);
+    for (const fn of this.activityListeners) fn(u.result);
     return u.result;
   }
 
