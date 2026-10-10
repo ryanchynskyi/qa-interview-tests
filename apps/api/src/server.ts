@@ -7,6 +7,8 @@ const db = new PrismaClient();
 const app = await buildApp({
   db,
   webOrigin: config.WEB_ORIGIN,
+  jwtSecret: config.JWT_SECRET,
+  cookieSecure: config.cookieSecure,
   logger: config.NODE_ENV === 'development' ? { level: 'info' } : true,
 });
 

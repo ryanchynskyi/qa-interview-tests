@@ -3,7 +3,10 @@
  */
 import { z } from 'zod';
 import type { Level } from './content';
+import type { DailyState, PlayerStats, ActivityResult } from './engine/progress';
+import type { CardProgress, QuestionProgress } from './engine/items';
 import type { TaskContent } from './engine/daily-tasks';
+import type { XpGrant } from './engine/xp';
 
 /* ---------- GET /content/catalog ---------- */
 
@@ -135,3 +138,96 @@ export interface ApiError {
   error: string;
   message?: string;
 }
+
+/* ---------- auth ---------- */
+
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email({ message: 'Невірний email' }).max(254));
+const password = z
+  .string()
+  .min(8, { message: 'Пароль: щонайменше 8 символів' })
+  .max(128, { message: 'Пароль: не довше 128 символів' });
+
+export const registerSchema = z.object({
+  email,
+  password,
+  displayName: z.string().trim().min(1).max(60).optional(),
+  timeZone: z.string().min(1).max(64),
+});
+export type RegisterRequest = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+  email,
+  password: z.string().min(1).max(128),
+});
+export type LoginRequest = z.infer<typeof loginSchema>;
+
+export const updateMeSchema = z.object({
+  displayName: z.string().trim().min(1).max(60).optional(),
+  timeZone: z.string().min(1).max(64).optional(),
+});
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
+  timeZone: string;
+}
+
+export interface AuthResponse {
+  /** Short-lived bearer token; the refresh token travels in an httpOnly cookie. */
+  accessToken: string;
+  user: AuthUser;
+}
+
+/* ---------- progress (signed-in users) ---------- */
+
+export interface QuizAttemptRecord {
+  at: number;
+  n: number;
+  y: number;
+}
+
+/** Everything the UI shows about a learner; the guest store keeps the same shape. */
+export interface PlayerProgress {
+  timeZone: string;
+  questions: Record<string, QuestionProgress>;
+  cards: Record<string, CardProgress>;
+  /** articleId → first read time */
+  articlesRead: Record<string, number>;
+  /** sectionId → newest first */
+  attempts: Record<string, QuizAttemptRecord[]>;
+  stats: PlayerStats;
+  daily: DailyState | null;
+  /** Newest last. */
+  xpLog: (XpGrant & { at: number })[];
+}
+
+/** What a progress mutation changed, so the client can patch its copy. */
+export interface ProgressUpdate {
+  result: ActivityResult;
+  at: number;
+  question?: { id: string; state: QuestionProgress };
+  card?: { id: string; state: CardProgress };
+  articleRead?: { id: string; at: number };
+  attempt?: { sectionId: string; attempt: QuizAttemptRecord };
+}
+
+export interface CheckAnswerWithProgress extends CheckAnswerResponse {
+  /** Present when the request was authenticated. */
+  progress?: ProgressUpdate;
+}
+
+export const finishQuizSchema = z.object({
+  sectionId: z.string().min(1).max(64),
+  /** The run's questions; the server counts correct answers itself. */
+  questionIds: z.array(z.string().min(1).max(64)).min(1).max(200),
+});
+
+export const rateCardSchema = z.object({
+  cardId: z.string().min(1).max(64),
+  rating: z.number().int().min(1).max(5),
+});

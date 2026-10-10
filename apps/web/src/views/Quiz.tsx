@@ -404,17 +404,20 @@ function RunView({
   };
 
   /** Records the attempt (quiz bonus + ACCURACY task) when a run with answers ends. */
+  /** Records the run once; the bonus shows up on the results card when it arrives. */
   const finish = (ids: string[]) => {
-    if (!ids.length) return 0;
-    const correct = ids.filter((id) => run.res[id] === 'y').length;
-    return store.finishQuiz(section.id, ids.length, correct).xpGained;
+    if (!ids.length) return;
+    store.finishQuiz(section.id, ids).then(
+      (r) => update((prev) => ({ ...prev, bonus: r.xpGained })),
+      (e: unknown) => console.warn('finishQuiz failed', e),
+    );
   };
 
   const next = () => {
     const i = run.i + 1;
     if (i >= run.ids.length) {
-      const bonus = finish(run.ids);
-      update((r) => ({ ...r, i, answer: null, done: true, bonus }));
+      finish(run.ids);
+      update((r) => ({ ...r, i, answer: null, done: true }));
     } else {
       const nq = byId.get(run.ids[i]!)!;
       update((r) => ({ ...r, i, answer: null, error: null, order: optionOrder(nq) }));
@@ -424,8 +427,8 @@ function RunView({
 
   const stop = () => {
     const ids = run.ids.slice(0, run.i + (run.answer ? 1 : 0));
-    const bonus = finish(ids);
-    update((r) => ({ ...r, ids, i: ids.length, done: true, bonus }));
+    finish(ids);
+    update((r) => ({ ...r, ids, i: ids.length, done: true }));
   };
 
   useKeydown((e) => {
@@ -646,11 +649,12 @@ function WipeButton({
         onClick={() => {
           if (!armed) return setArmed(true);
           setArmed(false);
-          store.resetSection(
-            section.id,
-            questions.map((q) => q.id),
-          );
-          onWiped();
+          void store
+            .resetSection(
+              section.id,
+              questions.map((q) => q.id),
+            )
+            .then(onWiped);
         }}
       >
         {armed ? 'Точно? Натисни ще раз' : 'Очистити прогрес цієї секції'}

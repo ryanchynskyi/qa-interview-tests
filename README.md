@@ -52,26 +52,39 @@ exported from the old page can be imported later.
 
 ## API
 
-| Endpoint                      | Notes                                                          |
-| ----------------------------- | -------------------------------------------------------------- |
-| `GET /health`                 | DB check + content counts                                      |
-| `GET /content/catalog`        | Topics, sections, chapters and a question/card index (no text) |
-| `GET /sections/:id/questions` | Questions **without** the correct option or explanation        |
-| `POST /quiz/check`            | `{questionId, choice}` → outcome, correct index, explanation   |
-| `GET /recall/cards`           | Recall cards with model answers                                |
-| `GET /kb/chapters/:id`        | Chapter with article HTML                                      |
-| `GET /kb/search?q=`           | All words must match; title hits rank first                    |
+| Endpoint                                                                  | Notes                                                                          |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `GET /health`                                                             | DB check + content counts                                                      |
+| `GET /content/catalog`                                                    | Topics, sections, chapters and a question/card index (no text)                 |
+| `GET /sections/:id/questions`                                             | Questions **without** the correct option or explanation                        |
+| `POST /quiz/check`                                                        | `{questionId, choice}` → outcome, correct index, explanation                   |
+| `GET /recall/cards`                                                       | Recall cards with model answers                                                |
+| `GET /kb/chapters/:id`                                                    | Chapter with article HTML                                                      |
+| `GET /kb/search?q=`                                                       | All words must match; title hits rank first                                    |
+| `POST /auth/register`, `/auth/login`                                      | Email + password (argon2id); returns an access token, sets the refresh cookie  |
+| `POST /auth/refresh`, `/auth/logout`                                      | Rotating refresh token in an httpOnly cookie; reuse revokes the session family |
+| `GET /auth/me`, `PATCH /me`                                               | Profile; time zone changeable once a day                                       |
+| `GET /me/progress`                                                        | Everything the UI needs; creates today's tasks on a new local day              |
+| `POST /me/quiz/finish`                                                    | Records a run; correctness comes from stored answers                           |
+| `POST /me/recall/rate`, `/me/articles/:id/read`, `/me/sections/:id/reset` | Progress mutations                                                             |
 
 Answers are checked on the server, so the correct option never ships with a question.
 
-## Progress and guest mode
+## Accounts, progress and guest mode
 
-Without an account, progress lives in `localStorage` (`qa-hub-guest-v1`) and runs through the shared
-engine in `packages/shared/src/engine`: XP, levels, streaks and three daily tasks that reset at local
-midnight. The same engine will run on the server for signed-in users.
+Without an account, progress lives in `localStorage` (`qa-hub-guest-v1`). Signed-in users keep it on
+the server. Both run the same engine in `packages/shared/src/engine` (XP, levels, streaks, three
+daily tasks that reset at local midnight), so the rules are identical.
+
+Sessions: a 15-minute access token (JWT, kept in memory) plus a 30-day refresh token in an
+httpOnly, SameSite=Lax cookie. Refresh tokens are stored hashed and rotated on every use; replaying
+an old one ends the whole session family. Register/login are rate limited (10/min per IP). Server
+progress writes lock the user's row, so parallel requests can't double-count XP.
+
+`JWT_SECRET` (32+ chars) is required; see `.env.example`.
 
 ## Tests
 
 `npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.
-Locally they use `TEST_DATABASE_URL` from `apps/api/.env` (read-only); without it they are skipped.
-CI runs them against a Postgres service.
+They use `TEST_DATABASE_URL` (`qahub_test`), which the test setup creates, migrates and seeds; tests
+create their own users. Without the variable they are skipped. CI runs them against a Postgres service.

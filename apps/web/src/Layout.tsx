@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { useAuth } from './auth/AuthProvider';
 import { levelFromXp } from '@qa-hub/shared';
 import { useNow } from './lib/stores';
 import { useProgress } from './progress/ProgressProvider';
@@ -30,6 +31,30 @@ function LevelChip() {
   );
 }
 
+function Account() {
+  const { state, logout } = useAuth();
+  const { pathname } = useLocation();
+  if (state.status !== 'user') {
+    if (pathname === '/login' || pathname === '/register') return null;
+    return (
+      <p className="guest">
+        Гостьовий режим: прогрес зберігається лише в цьому браузері.{' '}
+        <Link to={`/login?next=${encodeURIComponent(pathname)}`}>Увійти</Link> або{' '}
+        <Link to={`/register?next=${encodeURIComponent(pathname)}`}>створити акаунт</Link>, щоб
+        зберігати прогрес на сервері.
+      </p>
+    );
+  }
+  return (
+    <p className="guest" data-testid="account">
+      Привіт, <b>{state.user.displayName}</b> · прогрес зберігається в акаунті ({state.user.email}).{' '}
+      <button type="button" className="linkbtn" onClick={() => void logout()}>
+        Вийти
+      </button>
+    </p>
+  );
+}
+
 export function Layout() {
   const progress = useProgress();
   const { pathname } = useLocation();
@@ -50,7 +75,7 @@ export function Layout() {
         </div>
         <LevelChip />
       </div>
-      <p className="guest">Гостьовий режим: прогрес зберігається лише в цьому браузері.</p>
+      <Account />
       <nav className="views" aria-label="Розділи">
         {VIEWS.map((v) => (
           // NavLink sets aria-current="page", which the legacy CSS already styles.

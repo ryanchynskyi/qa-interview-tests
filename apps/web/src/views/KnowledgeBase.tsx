@@ -213,7 +213,7 @@ function ChapterView({
     if (target) {
       if (!openedStore.get().has(target.id)) {
         openedStore.set((prev) => new Set(prev).add(target.id));
-        store.readArticle(target.id, chapter.id, chapter.topicId);
+        store.readArticle(target.id, chapter.id, chapter.topicId).catch(() => {});
       }
       setTimeout(
         () =>
@@ -239,7 +239,7 @@ function ChapterView({
       else next.delete(id);
       return next;
     });
-    if (open && countsAsRead) store.readArticle(id, chapter.id, chapter.topicId);
+    if (open && countsAsRead) store.readArticle(id, chapter.id, chapter.topicId).catch(() => {});
   };
 
   return (

@@ -1,11 +1,17 @@
 import type {
   ApiError,
+  AuthResponse,
+  AuthUser,
   Catalog,
   ChapterDto,
   CheckAnswerRequest,
-  CheckAnswerResponse,
+  CheckAnswerWithProgress,
+  LoginRequest,
+  PlayerProgress,
+  ProgressUpdate,
   QuizQuestion,
   RecallCardDto,
+  RegisterRequest,
   SearchHit,
 } from '@qa-hub/shared';
 
@@ -19,27 +25,97 @@ export class HttpError extends Error {
   ) {
     super(body?.message ?? `HTTP ${status}`);
   }
+  get code() {
+    return this.body?.error;
+  }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, {
-    ...init,
-    headers: init?.body ? { 'content-type': 'application/json', ...init.headers } : init?.headers,
-  });
+/* ---------- session token (memory only; the refresh token is an httpOnly cookie) ---------- */
+
+let accessToken: string | null = null;
+let refreshing: Promise<AuthResponse | null> | null = null;
+let onSessionChange: (session: AuthResponse | null) => void = () => {};
+
+export const setAccessToken = (token: string | null) => void (accessToken = token);
+export const onSession = (fn: (session: AuthResponse | null) => void) =>
+  void (onSessionChange = fn);
+
+async function raw<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body) headers.set('content-type', 'application/json');
+  if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
+  const res = await fetch(BASE + path, { ...init, headers, credentials: 'include' });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as ApiError | null;
     throw new HttpError(res.status, body);
   }
-  return res.json() as Promise<T>;
+  return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/**
+ * Exchanges the refresh cookie for a new access token. Single-flight: concurrent
+ * callers share one request, since each refresh rotates the cookie.
+ */
+export function refreshSession(): Promise<AuthResponse | null> {
+  refreshing ??= (async () => {
+    try {
+      const session = await raw<AuthResponse>('/auth/refresh', { method: 'POST' });
+      accessToken = session.accessToken;
+      onSessionChange(session);
+      return session;
+    } catch {
+      accessToken = null;
+      onSessionChange(null);
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+/** Like raw(), but an expired access token is refreshed once and the call retried. */
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await raw<T>(path, init);
+  } catch (e) {
+    if (!(e instanceof HttpError) || e.status !== 401 || !accessToken) throw e;
+    if (!(await refreshSession())) throw e;
+    return raw<T>(path, init);
+  }
+}
+
+const post = <T>(path: string, body?: unknown) =>
+  request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+
 export const api = {
+  /* content */
   catalog: () => request<Catalog>('/content/catalog'),
   questions: (sectionId: string) =>
     request<QuizQuestion[]>(`/sections/${encodeURIComponent(sectionId)}/questions`),
-  checkAnswer: (body: CheckAnswerRequest) =>
-    request<CheckAnswerResponse>('/quiz/check', { method: 'POST', body: JSON.stringify(body) }),
   recallCards: () => request<RecallCardDto[]>('/recall/cards'),
   chapter: (id: string) => request<ChapterDto>(`/kb/chapters/${encodeURIComponent(id)}`),
   search: (q: string) => request<SearchHit[]>(`/kb/search?q=${encodeURIComponent(q)}`),
+
+  /* answers: also recorded server-side when signed in */
+  checkAnswer: (body: CheckAnswerRequest) => post<CheckAnswerWithProgress>('/quiz/check', body),
+
+  /* auth */
+  register: (body: RegisterRequest) =>
+    raw<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+  login: (body: LoginRequest) =>
+    raw<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  logout: () => raw<void>('/auth/logout', { method: 'POST' }),
+  me: () => request<AuthUser>('/auth/me'),
+
+  /* signed-in progress */
+  progress: () => request<PlayerProgress>('/me/progress'),
+  finishQuiz: (sectionId: string, questionIds: string[]) =>
+    post<ProgressUpdate>('/me/quiz/finish', { sectionId, questionIds }),
+  rateCard: (cardId: string, rating: number) =>
+    post<ProgressUpdate>('/me/recall/rate', { cardId, rating }),
+  readArticle: (articleId: string) =>
+    post<ProgressUpdate>(`/me/articles/${encodeURIComponent(articleId)}/read`),
+  resetSection: (sectionId: string) =>
+    post<void>(`/me/sections/${encodeURIComponent(sectionId)}/reset`),
 };

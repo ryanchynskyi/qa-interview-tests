@@ -24,7 +24,7 @@ describe.skipIf(!url)('content API (database)', () => {
 
   beforeAll(async () => {
     db = new PrismaClient({ datasources: { db: { url } } });
-    app = await buildApp({ db, webOrigin: 'http://localhost:5173' });
+    app = await buildApp({ db, webOrigin: 'http://localhost:5173', jwtSecret: 'x'.repeat(32) });
   });
   afterAll(async () => {
     await app.close();

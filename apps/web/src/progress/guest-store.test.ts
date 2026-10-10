@@ -119,27 +119,30 @@ describe('GuestStore', () => {
     expect(store.getSnapshot().stats.totalXp).toBe(0);
   });
 
-  it('rates recall cards with legacy scheduling', () => {
+  it('rates recall cards with legacy scheduling', async () => {
     const { store } = setup();
-    const r = store.rate({ id: 'c1', topicId: 'sql', chapterId: 'sq-0' }, 4);
+    const r = await store.rate({ id: 'c1', topicId: 'sql', chapterId: 'sq-0' }, 4);
     expect(r.wasDue).toBe(true);
     expect(r.grants[0]).toMatchObject({ reason: 'recall', amount: 5 });
     expect(store.getSnapshot().cards.c1).toMatchObject({ rating: 4, reviews: 1 });
   });
 
-  it('grants article XP only for the first read', () => {
+  it('grants article XP only for the first read', async () => {
     const { store } = setup();
-    expect(store.readArticle('sq-0:0', 'sq-0', 'sql').xpGained).toBe(2);
-    expect(store.readArticle('sq-0:0', 'sq-0', 'sql').xpGained).toBe(0);
+    expect((await store.readArticle('sq-0:0', 'sq-0', 'sql')).xpGained).toBe(2);
+    expect((await store.readArticle('sq-0:0', 'sq-0', 'sql')).xpGained).toBe(0);
   });
 
-  it('keeps quiz attempts newest first and awards the bonus', () => {
+  it('counts a finished run from stored answers, newest attempt first, with the bonus', async () => {
     const { store } = setup();
-    store.finishQuiz('sql', 10, 9);
-    const r = store.finishQuiz('sql', 10, 5);
-    expect(r.grants).toEqual([]);
-    expect(store.getSnapshot().attempts.sql!.map((a) => a.y)).toEqual([5, 9]);
-    expect(store.getSnapshot().xpLog.some((g) => g.reason === 'quiz_bonus')).toBe(true);
+    const ids = Array.from({ length: 10 }, (_, i) => `q${i}`);
+    for (const [i, id] of ids.entries()) await store.answer(question(id), 'sql', i < 9 ? 0 : 1);
+    const good = await store.finishQuiz('sql', ids);
+    expect(good.grants.some((g) => g.reason === 'quiz_bonus')).toBe(true);
+    for (const id of ids.slice(0, 5)) await store.answer(question(id), 'sql', 1);
+    const bad = await store.finishQuiz('sql', ids);
+    expect(bad.grants.some((g) => g.reason === 'quiz_bonus')).toBe(false);
+    expect(store.getSnapshot().attempts.sql!.map((a) => a.y)).toEqual([4, 9]);
   });
 
   it('rolls daily tasks over at local midnight', () => {
@@ -154,9 +157,9 @@ describe('GuestStore', () => {
   it('resets one section without losing XP', async () => {
     const { store } = setup();
     await store.answer(question('q1'), 'sql', 0);
-    store.finishQuiz('sql', 1, 1);
+    await store.finishQuiz('sql', ['q1']);
     const xp = store.getSnapshot().stats.totalXp;
-    store.resetSection('sql', ['q1', 'q2']);
+    await store.resetSection('sql', ['q1', 'q2']);
     expect(store.getSnapshot().questions).toEqual({});
     expect(store.getSnapshot().attempts.sql).toBeUndefined();
     expect(store.getSnapshot().stats.totalXp).toBe(xp);

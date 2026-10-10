@@ -26,6 +26,9 @@ interface Session {
   got: { card: RecallCardDto; rating: number }[];
   requeued: string[];
   xp: number;
+  /** A rating is being saved; further input waits. */
+  pending: boolean;
+  error: string | null;
 }
 
 // Survives switching tabs, like the legacy page.
@@ -62,7 +65,16 @@ export function Recall() {
       cards={cards}
       filter={filter}
       onStart={(items) => {
-        sessionStore.set({ items, i: 0, shown: false, got: [], requeued: [], xp: 0 });
+        sessionStore.set({
+          items,
+          i: 0,
+          shown: false,
+          got: [],
+          requeued: [],
+          xp: 0,
+          pending: false,
+          error: null,
+        });
         // The session lives at plain #/recall, so the tab link resumes it.
         navigate('/recall');
       }}
@@ -234,23 +246,34 @@ function SessionView({
   const reveal = () => {
     if (!s.shown) sessionStore.set({ ...s, shown: true });
   };
-  const rate = (rating: number) => {
-    if (!s.shown) return;
+  /** Saves the rating first (server or local), then moves on. */
+  const rate = async (rating: number) => {
+    if (!s.shown || s.pending) return;
     const card = s.items[s.i]!;
-    const r = store.rate(card, rating);
-    // "1" comes back later in the same session, once.
-    const requeue = rating === 1 && !s.requeued.includes(card.id);
-    const at = Math.min(s.i + 4, s.items.length);
-    sessionStore.set({
-      ...s,
-      items: requeue ? [...s.items.slice(0, at), card, ...s.items.slice(at)] : s.items,
-      requeued: requeue ? [...s.requeued, card.id] : s.requeued,
-      got: [...s.got, { card, rating }],
-      xp: s.xp + r.xpGained,
-      i: s.i + 1,
-      shown: false,
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    sessionStore.set({ ...s, pending: true, error: null });
+    try {
+      const r = await store.rate(card, rating);
+      // "1" comes back later in the same session, once.
+      const requeue = rating === 1 && !s.requeued.includes(card.id);
+      const at = Math.min(s.i + 4, s.items.length);
+      sessionStore.set({
+        ...s,
+        items: requeue ? [...s.items.slice(0, at), card, ...s.items.slice(at)] : s.items,
+        requeued: requeue ? [...s.requeued, card.id] : s.requeued,
+        got: [...s.got, { card, rating }],
+        xp: s.xp + r.xpGained,
+        i: s.i + 1,
+        shown: false,
+        pending: false,
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      sessionStore.set({
+        ...s,
+        pending: false,
+        error: `Не вдалося зберегти оцінку: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
   };
 
   useKeydown((e) => {
@@ -258,7 +281,7 @@ function SessionView({
     if (!s.shown && (e.key === ' ' || e.key === 'Enter')) {
       e.preventDefault();
       reveal();
-    } else if (s.shown && /^[1-5]$/.test(e.key)) rate(+e.key);
+    } else if (s.shown && /^[1-5]$/.test(e.key)) void rate(+e.key);
   });
 
   if (s.i >= s.items.length) {
@@ -387,12 +410,23 @@ function SessionView({
             <h3 style={{ marginTop: 16 }}>Наскільки добре ти відповів?</h3>
             <div className="rate">
               {RATES.map(([v, label]) => (
-                <button key={v} type="button" className={`r${v}`} onClick={() => rate(v)}>
+                <button
+                  key={v}
+                  type="button"
+                  className={`r${v}`}
+                  disabled={s.pending}
+                  onClick={() => void rate(v)}
+                >
                   {v}
                   <small>{label}</small>
                 </button>
               ))}
             </div>
+            {s.error && (
+              <p className="err" role="alert">
+                {s.error}
+              </p>
+            )}
           </div>
         )}
       </div>

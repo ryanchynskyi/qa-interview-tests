@@ -24,7 +24,11 @@ function fakeDb({ up }: { up: boolean }) {
 
 describe('GET /health', () => {
   it('returns 200 with content counts when the database is up', async () => {
-    app = await buildApp({ db: fakeDb({ up: true }), webOrigin: 'http://localhost:5173' });
+    app = await buildApp({
+      db: fakeDb({ up: true }),
+      webOrigin: 'http://localhost:5173',
+      jwtSecret: 'x'.repeat(32),
+    });
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
@@ -35,14 +39,22 @@ describe('GET /health', () => {
   });
 
   it('returns 503 when the database is down', async () => {
-    app = await buildApp({ db: fakeDb({ up: false }), webOrigin: 'http://localhost:5173' });
+    app = await buildApp({
+      db: fakeDb({ up: false }),
+      webOrigin: 'http://localhost:5173',
+      jwtSecret: 'x'.repeat(32),
+    });
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(503);
     expect(res.json()).toEqual({ status: 'degraded', db: 'down' });
   });
 
   it('allows CORS from the web origin', async () => {
-    app = await buildApp({ db: fakeDb({ up: true }), webOrigin: 'http://localhost:5173' });
+    app = await buildApp({
+      db: fakeDb({ up: true }),
+      webOrigin: 'http://localhost:5173',
+      jwtSecret: 'x'.repeat(32),
+    });
     const res = await app.inject({
       method: 'GET',
       url: '/health',

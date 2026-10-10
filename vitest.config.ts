@@ -1,6 +1,9 @@
 import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+// TEST_DATABASE_URL from apps/api/.env locally; CI sets it directly (env wins).
+for (const [k, v] of Object.entries(loadEnv('test', 'apps/api', 'TEST_'))) process.env[k] ??= v;
+
 export default defineConfig({
   test: {
     projects: [
@@ -11,8 +14,11 @@ export default defineConfig({
           name: 'api',
           root: 'apps/api',
           include: ['test/**/*.test.ts'],
-          // Picks up TEST_DATABASE_URL from apps/api/.env; CI sets it directly.
-          env: loadEnv('test', 'apps/api', 'TEST_'),
+          globalSetup: ['test/global-setup.ts'],
+          // Integration tests share one database; keep files sequential and generous.
+          fileParallelism: false,
+          testTimeout: 20_000,
+          hookTimeout: 120_000,
         },
       },
       {

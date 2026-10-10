@@ -17,45 +17,22 @@ import {
   weakChapters,
   type ActivityEvent,
   type ActivityResult,
-  type CardProgress,
   type Catalog,
   type CatalogCard,
   type CheckAnswerRequest,
   type CheckAnswerResponse,
   type DailyState,
-  type PlayerStats,
-  type QuestionProgress,
   type QuizQuestion,
   type SkillProgress,
   type XpGrant,
 } from '@qa-hub/shared';
+import type { ProgressRepo, ProgressState } from './types';
 
 export const STORAGE_KEY = 'qa-hub-guest-v1';
 const XP_LOG_SIZE = 100;
 const ATTEMPTS_KEPT = 20;
 
-export interface QuizAttempt {
-  at: number;
-  n: number;
-  y: number;
-}
-
-export interface ProgressState {
-  v: 1;
-  /** Seeds daily task generation; becomes irrelevant after sign-up import. */
-  guestId: string;
-  timeZone: string;
-  questions: Record<string, QuestionProgress>;
-  cards: Record<string, CardProgress>;
-  /** articleId → first read time */
-  articlesRead: Record<string, number>;
-  attempts: Record<string, QuizAttempt[]>;
-  stats: PlayerStats;
-  daily: DailyState | null;
-  /** Newest last. */
-  xpLog: (XpGrant & { at: number })[];
-  lastSection: string | null;
-}
+export type { ProgressState };
 
 export interface KeyValueStorage {
   getItem(key: string): string | null;
@@ -98,7 +75,8 @@ export function skillProgressOf(state: ProgressState): SkillProgress {
   return { questions, cards: state.cards };
 }
 
-export class GuestStore {
+export class GuestStore implements ProgressRepo {
+  readonly kind = 'guest' as const;
   private state: ProgressState;
   private listeners = new Set<() => void>();
   private catalog: Catalog | null = null;
@@ -238,8 +216,11 @@ export class GuestStore {
   }
 
   /** End of a quiz run: attempt history, quiz bonus, ACCURACY task. */
-  finishQuiz(sectionId: string, answered: number, correct: number): ActivityResult {
+  async finishQuiz(sectionId: string, questionIds: string[]): Promise<ActivityResult> {
     const s = this.withCurrentTimeZone(this.state);
+    const ids = [...new Set(questionIds)];
+    const answered = ids.length;
+    const correct = ids.filter((id) => s.questions[id]?.lastResult === 1).length;
     const at = this.now();
     const attempts = [{ at, n: answered, y: correct }, ...(s.attempts[sectionId] ?? [])].slice(
       0,
@@ -252,7 +233,7 @@ export class GuestStore {
     );
   }
 
-  rate(card: CatalogCard, rating: number): ActivityResult & { wasDue: boolean } {
+  async rate(card: CatalogCard, rating: number): Promise<ActivityResult & { wasDue: boolean }> {
     const s = this.withCurrentTimeZone(this.state);
     const at = this.now();
     const item = applyRecall(s.cards[card.id], rating, card.id, { now: at, timeZone: s.timeZone });
@@ -272,7 +253,11 @@ export class GuestStore {
     return { ...result, wasDue: item.wasDue };
   }
 
-  readArticle(articleId: string, chapterId: string, topicId: string): ActivityResult {
+  async readArticle(
+    articleId: string,
+    chapterId: string,
+    topicId: string,
+  ): Promise<ActivityResult> {
     const s = this.withCurrentTimeZone(this.state);
     const at = this.now();
     const already = articleId in s.articlesRead;
@@ -284,7 +269,7 @@ export class GuestStore {
   }
 
   /** "Clear this section's progress" from the legacy page. XP already earned stays. */
-  resetSection(sectionId: string, questionIds: readonly string[]): void {
+  async resetSection(sectionId: string, questionIds: readonly string[]): Promise<void> {
     const questions = { ...this.state.questions };
     for (const id of questionIds) delete questions[id];
     const attempts = { ...this.state.attempts };

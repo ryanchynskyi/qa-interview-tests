@@ -8,40 +8,68 @@ import {
   type ReactNode,
 } from 'react';
 import { api } from '../api';
+import { useAuth } from '../auth/AuthProvider';
 import { useCatalog } from '../hooks/content';
-import { GuestStore, STORAGE_KEY, skillProgressOf, type ProgressState } from './guest-store';
+import { LoadError, Loading } from '../lib/ui';
+import { GuestStore, STORAGE_KEY, skillProgressOf } from './guest-store';
+import { ServerStore } from './server-store';
+import type { ProgressRepo, ProgressState } from './types';
 
-const StoreContext = createContext<GuestStore | null>(null);
+const StoreContext = createContext<ProgressRepo | null>(null);
 
-function createStore(): GuestStore {
-  let storage: Storage | null = null;
+function browserStorage(): Pick<Storage, 'getItem' | 'setItem'> {
   try {
-    storage = window.localStorage;
+    return window.localStorage;
   } catch {
     // Blocked storage (some private modes): fall back to memory.
+    const memory = new Map<string, string>();
+    return { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => void memory.set(k, v) };
   }
-  const memory = new Map<string, string>();
-  return new GuestStore({
-    storage: storage ?? {
-      getItem: (k) => memory.get(k) ?? null,
-      setItem: (k, v) => void memory.set(k, v),
-    },
-    checkAnswer: api.checkAnswer,
-  });
 }
 
+const createGuestStore = () =>
+  new GuestStore({ storage: browserStorage(), checkAnswer: api.checkAnswer });
+
+/** Guests use localStorage; signed-in users use the API. Views can't tell the difference. */
 export function ProgressProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(createStore);
+  const { state: auth } = useAuth();
+  const [guest] = useState(createGuestStore);
+  const user = auth.status === 'user' ? auth.user : null;
+  const userId = user?.id ?? null;
+  const server = useMemo(
+    () => (user ? new ServerStore({ api, user, storage: browserStorage() }) : null),
+    // A new store only when the account changes, not on every auth object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userId],
+  );
+  const [loaded, setLoaded] = useState<ServerStore | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const { data: catalog } = useCatalog();
 
   useEffect(() => {
-    if (catalog) store.setCatalog(catalog);
-  }, [catalog, store]);
+    if (!server) return;
+    let cancelled = false;
+    server.load().then(
+      () => !cancelled && setLoaded(server),
+      (e: unknown) => !cancelled && setError(e),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [server]);
+
+  const repo: ProgressRepo = server ?? guest;
 
   useEffect(() => {
-    // New local day while the tab stays open, and progress written by other tabs.
-    const onFocus = () => store.refreshDaily();
-    const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && store.reload();
+    if (catalog) repo.setCatalog(catalog);
+  }, [catalog, repo]);
+
+  useEffect(() => {
+    // New local day while the tab stays open, and guest progress written by other tabs.
+    const onFocus = () => repo.refreshDaily();
+    const onStorage = (e: StorageEvent) => {
+      if (repo instanceof GuestStore && e.key === STORAGE_KEY) repo.reload();
+    };
     const timer = window.setInterval(onFocus, 60_000);
     window.addEventListener('focus', onFocus);
     window.addEventListener('storage', onStorage);
@@ -50,12 +78,22 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('storage', onStorage);
     };
-  }, [store]);
+  }, [repo]);
 
-  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
+  if (auth.status === 'loading') return <Shell />;
+  if (server && loaded !== server) {
+    return (
+      <Shell>{error ? <LoadError error={error} retry={() => location.reload()} /> : null}</Shell>
+    );
+  }
+  return <StoreContext.Provider value={repo}>{children}</StoreContext.Provider>;
 }
 
-export function useStore(): GuestStore {
+function Shell({ children }: { children?: ReactNode }) {
+  return <div className="wrap">{children ?? <Loading />}</div>;
+}
+
+export function useStore(): ProgressRepo {
   const store = useContext(StoreContext);
   if (!store) throw new Error('useStore() outside <ProgressProvider>');
   return store;
