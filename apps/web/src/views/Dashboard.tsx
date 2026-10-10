@@ -64,7 +64,7 @@ export function Dashboard() {
       <div className="runhead">
         <div>
           <p className="prompt">$ npx qa-hub run --today</p>
-          <h1>Підготовка до Senior QA Automation</h1>
+          <h1>QA Interview Preparation Hub</h1>
           <p className="summary">
             <span>
               Тести: <b className="ok">{totals.correct} passed</b> з {totals.questions}
