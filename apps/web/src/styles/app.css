@@ -863,9 +863,6 @@
   }
 }
 @media (max-width: 420px) {
-  .logo .full {
-    display: none;
-  }
   .lvlchip {
     min-width: 56px;
   }
@@ -1046,4 +1043,33 @@
 }
 .rules .badge {
   vertical-align: 1px;
+}
+
+/* route error screen */
+.errpage {
+  max-width: 640px;
+  margin: 24px auto;
+  display: grid;
+  gap: 10px;
+}
+.errpage h1 {
+  font-size: 24px;
+}
+.errpage .note {
+  margin: 0;
+}
+.errline {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 380px) {
+  /* signed in, the bar holds six items: tighten so the full logo still fits at 360px */
+  .topbar-in,
+  .me {
+    gap: 6px;
+  }
+  .lvlchip {
+    min-width: 48px;
+  }
 }
