@@ -133,7 +133,8 @@ M8 — tests and deployment:
    web on GitHub Pages. Cookie strategy decided: cross-site mode
    (`COOKIE_SAMESITE=none` → `SameSite=None; Secure; Partitioned`, Origin check on writes); Google
    callback hands the app a one-time code redeemed by fetch (`POST /auth/google/exchange`) so the
-   refresh cookie lands in the partitioned jar. `TRUST_PROXY=1` for per-IP rate limits — verify
-   `req.ip` in Render logs after the first deploy. Steps: README "Deploying".
+   refresh cookie lands in the partitioned jar. Rate limits key on `CLIENT_IP_HEADER=true-client-ip`:
+   on Render, X-Forwarded-For keeps client-supplied entries plus Cloudflare and internal hops, so
+   `TRUST_PROXY=1` saw rotating Cloudflare IPs and limits never triggered. Steps: README "Deploying".
 4. Google: add the production redirect URI, then publish the OAuth app.
 5. ~~Pages via Actions, revert the revert, merge into `main`~~ (done in PR #3; legacy at `/legacy/`).

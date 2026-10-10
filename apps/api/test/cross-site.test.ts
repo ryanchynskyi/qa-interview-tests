@@ -105,6 +105,32 @@ describe('behind a hosting proxy', () => {
     }
   });
 
+  it('keys rate limits on the edge-provided client IP header', async () => {
+    const app = await buildApp({
+      db: testDb(),
+      webOrigin: WEB,
+      jwtSecret: JWT_SECRET,
+      authRateLimit: 2,
+      clientIpHeader: 'true-client-ip',
+    });
+    const login = (ip: string, xff = '9.9.9.9') =>
+      app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        // A client can put anything in X-Forwarded-For; the edge overwrites True-Client-IP.
+        headers: { 'true-client-ip': ip, 'x-forwarded-for': xff },
+        payload: { email: uniqueEmail(), password: 'wrong-password' },
+      });
+    try {
+      expect((await login('1.2.3.4', '1.1.1.1')).statusCode).toBe(401);
+      expect((await login('1.2.3.4', '2.2.2.2')).statusCode).toBe(401);
+      expect((await login('1.2.3.4', '3.3.3.3')).statusCode).toBe(429);
+      expect((await login('5.6.7.8')).statusCode).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('parses TRUST_PROXY', () => {
     const base = { DATABASE_URL: 'postgresql://x@localhost/db', JWT_SECRET };
     expect(loadConfig({ ...base, TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);

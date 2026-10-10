@@ -33,9 +33,10 @@ services:
         value: 'true'
       - key: COOKIE_SAMESITE
         value: none
-      # Render's proxy appends the client address; check req.ip in the logs after the first deploy.
-      - key: TRUST_PROXY
-        value: '1'
+      # Rate limits key on the client IP that Render's edge (Cloudflare) writes into True-Client-IP.
+      # X-Forwarded-For there keeps client-supplied values and adds several hops, so it isn't used.
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
