@@ -8,6 +8,7 @@ import { Layout } from './Layout';
 import { AuthProvider } from './auth/AuthProvider';
 import { ProgressProvider } from './progress/ProgressProvider';
 import { AuthPage } from './views/AuthPage';
+import { ImportPage } from './views/ImportPage';
 import { Dashboard } from './views/Dashboard';
 import { KnowledgeBase } from './views/KnowledgeBase';
 import { Quiz } from './views/Quiz';
@@ -26,6 +27,7 @@ const router = createHashRouter([
       { path: 'kb/:topicId?/:chapterId?/:art?', element: <KnowledgeBase /> },
       { path: 'login', element: <AuthPage mode="login" /> },
       { path: 'register', element: <AuthPage mode="register" /> },
+      { path: 'import', element: <ImportPage /> },
       { path: '*', element: <Navigate to="/dash" replace /> },
     ],
   },

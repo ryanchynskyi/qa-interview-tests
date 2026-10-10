@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthProvider';
 import { levelFromXp } from '@qa-hub/shared';
 import { useNow } from './lib/stores';
 import { useProgress } from './progress/ProgressProvider';
+import { ImportBanner } from './views/ImportBanner';
 
 const VIEWS = [
   { to: '/dash', label: 'Дашборд' },
@@ -76,6 +77,7 @@ export function Layout() {
         <LevelChip />
       </div>
       <Account />
+      <ImportBanner />
       <nav className="views" aria-label="Розділи">
         {VIEWS.map((v) => (
           // NavLink sets aria-current="page", which the legacy CSS already styles.
@@ -96,6 +98,9 @@ export function Layout() {
               ? 'Пробіл показати відповідь, 1–5 оцінка.'
               : ''}
         </span>
+        <Link className="note" to="/import">
+          Перенести прогрес зі старої версії
+        </Link>
       </footer>
     </div>
   );

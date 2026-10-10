@@ -6,6 +6,8 @@ import type {
   ChapterDto,
   CheckAnswerRequest,
   CheckAnswerWithProgress,
+  ImportPayload,
+  ImportResult,
   LoginRequest,
   PlayerProgress,
   ProgressUpdate,
@@ -126,6 +128,7 @@ export const api = {
     post<ProgressUpdate>('/me/recall/rate', { cardId, rating }),
   readArticle: (articleId: string) =>
     post<ProgressUpdate>(`/me/articles/${encodeURIComponent(articleId)}/read`),
+  importProgress: (payload: ImportPayload) => post<ImportResult>('/me/import', payload),
   resetSection: (sectionId: string) =>
     post<void>(`/me/sections/${encodeURIComponent(sectionId)}/reset`),
 };

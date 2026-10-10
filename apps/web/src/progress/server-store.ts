@@ -8,6 +8,8 @@ import {
   type AuthUser,
   type CatalogCard,
   type CheckAnswerResponse,
+  type ImportPayload,
+  type ImportResult,
   type PlayerProgress,
   type ProgressUpdate,
   type QuizQuestion,
@@ -21,7 +23,13 @@ const LAST_SECTION_KEY = 'qa-hub-last-section';
 
 type Api = Pick<
   typeof apiClient,
-  'progress' | 'checkAnswer' | 'finishQuiz' | 'rateCard' | 'readArticle' | 'resetSection'
+  | 'progress'
+  | 'checkAnswer'
+  | 'finishQuiz'
+  | 'rateCard'
+  | 'readArticle'
+  | 'resetSection'
+  | 'importProgress'
 >;
 
 export interface ServerStoreDeps {
@@ -151,6 +159,12 @@ export class ServerStore implements ProgressRepo {
     const attempts = { ...s.attempts };
     delete attempts[sectionId];
     this.set({ ...s, questions, attempts });
+  }
+
+  async importProgress(payload: ImportPayload): Promise<ImportResult> {
+    const result = await this.deps.api.importProgress(payload);
+    if (result.xpGained || Object.values(result.imported).some(Boolean)) await this.load();
+    return result;
   }
 
   setLastSection(sectionId: string): void {

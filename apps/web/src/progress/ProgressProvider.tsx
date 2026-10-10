@@ -16,6 +16,8 @@ import { ServerStore } from './server-store';
 import type { ProgressRepo, ProgressState } from './types';
 
 const StoreContext = createContext<ProgressRepo | null>(null);
+/** The guest store, available even when signed in: the import banner reads from it. */
+const GuestContext = createContext<GuestStore | null>(null);
 
 function browserStorage(): Pick<Storage, 'getItem' | 'setItem'> {
   try {
@@ -86,7 +88,11 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       <Shell>{error ? <LoadError error={error} retry={() => location.reload()} /> : null}</Shell>
     );
   }
-  return <StoreContext.Provider value={repo}>{children}</StoreContext.Provider>;
+  return (
+    <GuestContext.Provider value={guest}>
+      <StoreContext.Provider value={repo}>{children}</StoreContext.Provider>
+    </GuestContext.Provider>
+  );
 }
 
 function Shell({ children }: { children?: ReactNode }) {
@@ -96,6 +102,12 @@ function Shell({ children }: { children?: ReactNode }) {
 export function useStore(): ProgressRepo {
   const store = useContext(StoreContext);
   if (!store) throw new Error('useStore() outside <ProgressProvider>');
+  return store;
+}
+
+export function useGuestStore(): GuestStore {
+  const store = useContext(GuestContext);
+  if (!store) throw new Error('useGuestStore() outside <ProgressProvider>');
   return store;
 }
 

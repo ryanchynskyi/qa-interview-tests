@@ -9,8 +9,12 @@ import {
   applyAnswer,
   applyArticleRead,
   applyRecall,
+  clampDueAt,
+  emptyCounts,
   ensureDaily,
   generateDailyTasks,
+  importGrants,
+  levelFromXp,
   localDate,
   quizBonus,
   recordActivity,
@@ -22,6 +26,8 @@ import {
   type Catalog,
   type DailyState,
   type DailyTask,
+  type ImportPayload,
+  type ImportResult,
   type PlayerProgress,
   type PlayerStats,
   type ProgressUpdate,
@@ -456,6 +462,160 @@ export class ProgressService {
         result,
         at: now,
         articleRead: { id: articleId, at: existing?.readAt.getTime() ?? now },
+      };
+    });
+  }
+
+  /**
+   * Moves guest/legacy progress into the account. Unknown content is skipped, anything
+   * the account already has wins, timestamps are clamped to [2020, now], and XP comes
+   * from the normal rules applied once to each newly added item. Re-importing the same
+   * data therefore adds nothing.
+   */
+  async importProgress(userId: string, p: ImportPayload): Promise<ImportResult> {
+    const now = this.now();
+    const floor = Date.UTC(2020, 0, 1);
+    const at = (t: number | undefined) =>
+      new Date(t === undefined ? now : Math.min(Math.max(t, floor), now));
+
+    const [questions, cards, articles, sections] = await Promise.all([
+      this.db.question.findMany({
+        where: { id: { in: Object.keys(p.questions) } },
+        select: { id: true, level: true },
+      }),
+      this.db.recallCard.findMany({
+        where: { id: { in: Object.keys(p.cards) } },
+        select: { id: true },
+      }),
+      this.db.article.findMany({
+        where: { id: { in: Object.keys(p.articlesRead) } },
+        select: { id: true },
+      }),
+      this.db.section.findMany({
+        where: { id: { in: Object.keys(p.attempts) } },
+        select: { id: true },
+      }),
+    ]);
+
+    return this.inTx(userId, async (tx) => {
+      const [haveQ, haveC, haveA, haveAttempts] = await Promise.all([
+        tx.questionState.findMany({
+          where: { userId, questionId: { in: questions.map((q) => q.id) } },
+          select: { questionId: true },
+        }),
+        tx.cardState.findMany({
+          where: { userId, cardId: { in: cards.map((c) => c.id) } },
+          select: { cardId: true },
+        }),
+        tx.articleRead.findMany({
+          where: { userId, articleId: { in: articles.map((a) => a.id) } },
+          select: { articleId: true },
+        }),
+        tx.quizAttempt.findMany({
+          where: { userId, sectionId: { in: sections.map((s) => s.id) } },
+          select: { sectionId: true, at: true },
+        }),
+      ]);
+      const hasQ = new Set(haveQ.map((r) => r.questionId));
+      const hasC = new Set(haveC.map((r) => r.cardId));
+      const hasA = new Set(haveA.map((r) => r.articleId));
+      const hasAttempt = new Set(haveAttempts.map((r) => `${r.sectionId}@${r.at.getTime()}`));
+
+      const newQ = questions.filter((q) => !hasQ.has(q.id));
+      const newC = cards.filter((c) => !hasC.has(c.id));
+      const newA = articles.filter((a) => !hasA.has(a.id));
+      const newAttempts = sections.flatMap((s) =>
+        (p.attempts[s.id] ?? [])
+          .filter((a) => a.at <= now && a.y <= a.n && !hasAttempt.has(`${s.id}@${a.at}`))
+          .map((a) => ({
+            userId,
+            sectionId: s.id,
+            answered: a.n,
+            correct: a.y,
+            at: new Date(a.at),
+          })),
+      );
+
+      await tx.questionState.createMany({
+        data: newQ.map((q) => {
+          const src = p.questions[q.id]!;
+          const when = at(src.answeredAt);
+          return {
+            userId,
+            questionId: q.id,
+            lastResult: src.lastResult,
+            attempts: src.attempts ?? 1,
+            firstCorrectAt: src.lastResult === 1 ? when : null,
+            lastXpDate: null,
+            answeredAt: when,
+          };
+        }),
+      });
+      await tx.cardState.createMany({
+        data: newC.map((c) => {
+          const src = p.cards[c.id]!;
+          return {
+            userId,
+            cardId: c.id,
+            rating: src.rating,
+            reviews: src.reviews,
+            dueAt: new Date(clampDueAt(src.dueAt, now)),
+            history: src.history.length ? src.history : [src.rating],
+          };
+        }),
+      });
+      await tx.articleRead.createMany({
+        data: newA.map((a) => ({ userId, articleId: a.id, readAt: at(p.articlesRead[a.id]) })),
+      });
+      await tx.quizAttempt.createMany({ data: newAttempts });
+
+      const grants = importGrants({
+        correctLevels: newQ.filter((q) => p.questions[q.id]!.lastResult === 1).map((q) => q.level),
+        cardRatings: newC.map((c) => p.cards[c.id]!.rating),
+        articles: newA.length,
+      });
+      const xpGained = grants.reduce((n, g) => n + g.amount, 0);
+      const stats = await tx.userStats.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
+      });
+      if (xpGained) {
+        await tx.userStats.update({
+          where: { userId },
+          data: { totalXp: stats.totalXp + xpGained },
+        });
+        await tx.xpEvent.createMany({
+          data: grants.map((g) => ({
+            userId,
+            amount: g.amount,
+            reason: g.reason,
+            refId: `${p.source}:${g.refId}`,
+            at: new Date(now),
+          })),
+        });
+      }
+      const before = levelFromXp(stats.totalXp).level;
+      const after = levelFromXp(stats.totalXp + xpGained).level;
+
+      const total = (o: object) => Object.keys(o).length;
+      const attemptsIn = Object.values(p.attempts).reduce((n, a) => n + a.length, 0);
+      return {
+        imported: {
+          questions: newQ.length,
+          cards: newC.length,
+          articles: newA.length,
+          attempts: newAttempts.length,
+        },
+        skipped: {
+          ...emptyCounts(),
+          questions: total(p.questions) - newQ.length,
+          cards: total(p.cards) - newC.length,
+          articles: total(p.articlesRead) - newA.length,
+          attempts: attemptsIn - newAttempts.length,
+        },
+        xpGained,
+        levelUp: after > before ? { from: before, to: after } : null,
       };
     });
   }

@@ -3,6 +3,8 @@ import type {
   Catalog,
   CatalogCard,
   CheckAnswerResponse,
+  ImportPayload,
+  ImportResult,
   PlayerProgress,
   QuizQuestion,
 } from '@qa-hub/shared';
@@ -37,4 +39,6 @@ export interface ProgressRepo {
   readArticle(articleId: string, chapterId: string, topicId: string): Promise<ActivityResult>;
   resetSection(sectionId: string, questionIds: readonly string[]): Promise<void>;
   setLastSection(sectionId: string): void;
+  /** Merges guest/legacy progress in; existing items win, XP is recomputed. */
+  importProgress(payload: ImportPayload): Promise<ImportResult>;
 }

@@ -25,7 +25,9 @@ export type XpReason =
   | 'quiz_bonus'
   | 'daily_task'
   | 'daily_all_done'
-  | 'streak';
+  | 'streak'
+  /** Progress moved in from guest mode or the legacy page (recomputed by the server). */
+  | 'import';
 
 export interface XpGrant {
   amount: number;

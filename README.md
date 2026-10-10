@@ -94,6 +94,19 @@ A Google account signs into the user with the same verified email. If that user 
 password but never verified the email, the password and its sessions are dropped on linking, since
 whoever set them may not own the address.
 
+## Moving progress in (guest mode, old site)
+
+After sign-in the app offers to move progress found in this browser into the account: guest-mode
+progress, and the old single-page site's save (`qa-hub-v1`, readable when both are served from the same
+origin, e.g. GitHub Pages). From another browser, paste the old site's "Скопіювати прогрес" text on
+`#/import`. Guests can import an old-site save into guest mode the same way.
+
+`POST /me/import` accepts a normalised payload (built in the browser by `fromLegacy` / `fromGuest` in
+`packages/shared/src/import.ts`, which understands every legacy save version). The server keeps what the
+account already has, skips unknown content, clamps timestamps, and recalculates XP with the normal rules
+once per newly added item, so importing twice adds nothing and nobody can import XP directly. The old
+site's save is never modified; moved guest progress is kept as a backup under `qa-hub-guest-v1.imported`.
+
 ## Tests
 
 `npm test` runs unit tests everywhere plus API integration tests against a real, seeded database.

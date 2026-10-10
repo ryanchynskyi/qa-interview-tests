@@ -62,6 +62,12 @@ function setup(now = Date.parse('2026-10-10T08:00:00Z')) {
     ),
     readArticle: vi.fn(async () => update({ articleRead: { id: 'a1', at: 1000 } }, 2)),
     resetSection: vi.fn(async () => undefined),
+    importProgress: vi.fn(async () => ({
+      imported: { questions: 1, cards: 0, articles: 0, attempts: 0 },
+      skipped: { questions: 0, cards: 0, articles: 0, attempts: 0 },
+      xpGained: 10,
+      levelUp: null,
+    })),
   };
   let t = now;
   const store = new ServerStore({
@@ -130,5 +136,19 @@ describe('ServerStore', () => {
     await store.resetSection('sql', ['q1']);
     expect(api.resetSection).toHaveBeenCalledWith('sql');
     expect(store.getSnapshot().questions).toEqual({});
+  });
+
+  it('reloads the snapshot after an import that added something', async () => {
+    const { store, api } = setup();
+    await store.load();
+    const r = await store.importProgress({
+      source: 'guest',
+      questions: {},
+      cards: {},
+      articlesRead: {},
+      attempts: {},
+    });
+    expect(r.xpGained).toBe(10);
+    expect(api.progress).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { finishQuizSchema, rateCardSchema } from '@qa-hub/shared';
+import { finishQuizSchema, importPayloadSchema, rateCardSchema } from '@qa-hub/shared';
 
 /** Progress endpoints for signed-in users. Answers go through POST /quiz/check. */
 export const meRoutes: FastifyPluginAsync = async (app) => {
@@ -24,6 +24,19 @@ export const meRoutes: FastifyPluginAsync = async (app) => {
     const userId = await app.requireUser(req);
     return app.progress.readArticle(userId, req.params.id);
   });
+
+  /** Guest or legacy progress → this account. Rate limited: it's a heavy write. */
+  app.post(
+    '/me/import',
+    {
+      config: { rateLimit: { max: app.auth.rateLimit, timeWindow: '1 minute' } },
+      bodyLimit: 2 * 1024 * 1024,
+    },
+    async (req) => {
+      const userId = await app.requireUser(req);
+      return app.progress.importProgress(userId, importPayloadSchema.parse(req.body));
+    },
+  );
 
   app.post<{ Params: { id: string } }>('/me/sections/:id/reset', async (req, reply) => {
     const userId = await app.requireUser(req);

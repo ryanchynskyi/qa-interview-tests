@@ -87,3 +87,8 @@
   color: var(--muted);
   margin: 12px 0;
 }
+.importcard {
+  margin-bottom: 14px;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}

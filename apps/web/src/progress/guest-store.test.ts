@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Catalog, CheckAnswerResponse, QuizQuestion } from '@qa-hub/shared';
-import { GuestStore, STORAGE_KEY, type KeyValueStorage, type ProgressState } from './guest-store';
+import {
+  GuestStore,
+  IMPORTED_BACKUP_KEY,
+  STORAGE_KEY,
+  type KeyValueStorage,
+  type ProgressState,
+} from './guest-store';
 
 const catalog: Catalog = {
   topics: [{ id: 'sql', name: 'SQL', order: 0 }],
@@ -163,5 +169,52 @@ describe('GuestStore', () => {
     expect(store.getSnapshot().questions).toEqual({});
     expect(store.getSnapshot().attempts.sql).toBeUndefined();
     expect(store.getSnapshot().stats.totalXp).toBe(xp);
+  });
+
+  describe('importProgress', () => {
+    const legacy = (now: number) => ({
+      source: 'legacy' as const,
+      questions: {
+        q1: { lastResult: 1 as const },
+        q2: { lastResult: 0 as const },
+        ghost: { lastResult: 1 as const },
+      },
+      cards: { c1: { rating: 4, reviews: 2, dueAt: now + 999 * 86_400_000, history: [4] } },
+      articlesRead: { 'sq-0:1': now - 1000, 'sq-0:7': now },
+      attempts: { sql: [{ at: now - 1000, n: 10, y: 8 }], nope: [{ at: 1, n: 1, y: 1 }] },
+    });
+
+    it('merges known items, recomputes XP and clamps due dates', async () => {
+      const { store } = setup();
+      store.setCatalog(catalog);
+      const now = Date.parse('2026-10-10T08:00:00Z');
+      const r = await store.importProgress(legacy(now));
+      expect(r.imported).toEqual({ questions: 2, cards: 1, articles: 1, attempts: 1 });
+      expect(r.skipped).toEqual({ questions: 1, cards: 0, articles: 1, attempts: 1 });
+      expect(r.xpGained).toBe(10 + 5 + 2); // middle q1 + card rated 4 + one article
+      const s = store.getSnapshot();
+      expect(s.cards.c1!.dueAt).toBe(now + 14 * 86_400_000);
+      expect(s.attempts.sql).toEqual([{ at: now - 1000, n: 10, y: 8 }]);
+      expect(s.stats.totalXp).toBe(17);
+    });
+
+    it('keeps existing answers and adds nothing on a second run', async () => {
+      const { store } = setup();
+      store.setCatalog(catalog);
+      await store.answer(question('q1'), 'sql', 1); // answered wrong locally
+      const now = Date.parse('2026-10-10T08:00:00Z');
+      await store.importProgress(legacy(now));
+      expect(store.getSnapshot().questions.q1!.lastResult).toBe(0);
+      const again = await store.importProgress(legacy(now));
+      expect(again.xpGained).toBe(0);
+    });
+
+    it('clears guest progress after a move, keeping a backup copy', async () => {
+      const { store, storage } = setup();
+      await store.answer(question('q1'), 'sql', 0);
+      store.clearAfterImport();
+      expect(store.getSnapshot().questions).toEqual({});
+      expect(JSON.parse(storage.data[IMPORTED_BACKUP_KEY]!).questions.q1).toBeDefined();
+    });
   });
 });

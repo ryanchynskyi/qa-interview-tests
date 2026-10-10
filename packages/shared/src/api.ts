@@ -61,6 +61,13 @@ export function taskContentFromCatalog(c: Catalog): TaskContent {
   };
 }
 
+/** Question ids per section in legacy order, for converting v1 legacy saves. */
+export function legacyIndexFromCatalog(c: Catalog): Record<string, string[]> {
+  const index: Record<string, string[]> = {};
+  for (const q of c.questions) (index[q.sectionId] ??= []).push(q.id);
+  return index;
+}
+
 /* ---------- GET /sections/:id/questions ---------- */
 
 /** A question as sent before answering: no correct index, no explanation. */

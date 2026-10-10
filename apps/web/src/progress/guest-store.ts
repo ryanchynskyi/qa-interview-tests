@@ -7,8 +7,12 @@ import {
   applyAnswer,
   applyArticleRead,
   applyRecall,
+  clampDueAt,
+  emptyCounts,
   ensureDaily,
   generateDailyTasks,
+  importGrants,
+  levelFromXp,
   localDate,
   newPlayerStats,
   quizBonus,
@@ -22,6 +26,9 @@ import {
   type CheckAnswerRequest,
   type CheckAnswerResponse,
   type DailyState,
+  type ImportPayload,
+  type Level,
+  type ImportResult,
   type QuizQuestion,
   type SkillProgress,
   type XpGrant,
@@ -29,6 +36,8 @@ import {
 import type { ProgressRepo, ProgressState } from './types';
 
 export const STORAGE_KEY = 'qa-hub-guest-v1';
+/** Where guest progress is kept after it has been moved into an account (just in case). */
+export const IMPORTED_BACKUP_KEY = 'qa-hub-guest-v1.imported';
 const XP_LOG_SIZE = 100;
 const ATTEMPTS_KEPT = 20;
 
@@ -275,6 +284,120 @@ export class GuestStore implements ProgressRepo {
     const attempts = { ...this.state.attempts };
     delete attempts[sectionId];
     this.commit({ ...this.state, questions, attempts });
+  }
+
+  /** Same merge rules as the server: known content only, existing items win, XP recomputed. */
+  async importProgress(p: ImportPayload): Promise<ImportResult> {
+    const catalog = this.catalog;
+    if (!catalog) throw new Error('Зміст ще завантажується, спробуй за мить');
+    const s = this.state;
+    const now = this.now();
+    const floor = Date.UTC(2020, 0, 1);
+    const at = (t: number | undefined) =>
+      t === undefined ? now : Math.min(Math.max(t, floor), now);
+    const level = new Map(catalog.questions.map((q) => [q.id, q.level]));
+    const cardIds = new Set(catalog.recallCards.map((c) => c.id));
+    const articleCount = new Map(catalog.chapters.map((ch) => [ch.id, ch.articleCount]));
+    const isArticle = (id: string) => {
+      const m = /^(.+):(\d+)$/.exec(id);
+      return !!m && Number(m[2]) < (articleCount.get(m[1]!) ?? 0);
+    };
+    const sections = new Set(catalog.sections.map((x) => x.id));
+
+    const questions = { ...s.questions };
+    const correctLevels: Level[] = [];
+    let newQ = 0;
+    for (const [id, q] of Object.entries(p.questions)) {
+      const lvl = level.get(id);
+      if (!lvl || id in questions) continue;
+      const when = at(q.answeredAt);
+      questions[id] = {
+        lastResult: q.lastResult,
+        attempts: q.attempts ?? 1,
+        firstCorrectAt: q.lastResult === 1 ? when : null,
+        lastXpDate: null,
+      };
+      if (q.lastResult === 1) correctLevels.push(lvl);
+      newQ++;
+    }
+    const cards = { ...s.cards };
+    const cardRatings: number[] = [];
+    for (const [id, c] of Object.entries(p.cards)) {
+      if (!cardIds.has(id) || id in cards) continue;
+      cards[id] = {
+        ...c,
+        dueAt: clampDueAt(c.dueAt, now),
+        history: c.history.length ? c.history : [c.rating],
+      };
+      cardRatings.push(c.rating);
+    }
+    const articlesRead = { ...s.articlesRead };
+    let newA = 0;
+    for (const [id, t] of Object.entries(p.articlesRead)) {
+      if (!isArticle(id) || id in articlesRead) continue;
+      articlesRead[id] = at(t);
+      newA++;
+    }
+    const attempts = { ...s.attempts };
+    let newAttempts = 0;
+    let attemptsIn = 0;
+    for (const [sec, list] of Object.entries(p.attempts)) {
+      attemptsIn += list.length;
+      if (!sections.has(sec)) continue;
+      const have = new Set((attempts[sec] ?? []).map((a) => a.at));
+      const add = list.filter((a) => a.at <= now && a.y <= a.n && !have.has(a.at));
+      if (!add.length) continue;
+      newAttempts += add.length;
+      attempts[sec] = [...(attempts[sec] ?? []), ...add]
+        .sort((x, y) => y.at - x.at)
+        .slice(0, ATTEMPTS_KEPT);
+    }
+
+    const grants = importGrants({ correctLevels, cardRatings, articles: newA });
+    const xpGained = grants.reduce((n, g) => n + g.amount, 0);
+    const before = levelFromXp(s.stats.totalXp).level;
+    const totalXp = s.stats.totalXp + xpGained;
+    const after = levelFromXp(totalXp).level;
+    this.commit({
+      ...s,
+      questions,
+      cards,
+      articlesRead,
+      attempts,
+      stats: { ...s.stats, totalXp },
+      xpLog: [
+        ...s.xpLog,
+        ...grants.map((g) => ({ ...g, refId: `${p.source}:${g.refId}`, at: now })),
+      ].slice(-XP_LOG_SIZE),
+    });
+    const total = (o: object) => Object.keys(o).length;
+    return {
+      imported: {
+        questions: newQ,
+        cards: cardRatings.length,
+        articles: newA,
+        attempts: newAttempts,
+      },
+      skipped: {
+        ...emptyCounts(),
+        questions: total(p.questions) - newQ,
+        cards: total(p.cards) - cardRatings.length,
+        articles: total(p.articlesRead) - newA,
+        attempts: attemptsIn - newAttempts,
+      },
+      xpGained,
+      levelUp: after > before ? { from: before, to: after } : null,
+    };
+  }
+
+  /** After guest progress moved into an account: keep a backup copy, start the guest fresh. */
+  clearAfterImport(): void {
+    try {
+      this.deps.storage.setItem(IMPORTED_BACKUP_KEY, JSON.stringify(this.state));
+    } catch {
+      // storage unavailable; the account has the data anyway
+    }
+    this.commit(emptyState(this.state.guestId, this.state.timeZone));
   }
 
   setLastSection(sectionId: string): void {
