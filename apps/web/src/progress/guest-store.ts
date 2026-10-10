@@ -33,6 +33,7 @@ import {
   type SkillProgress,
   type XpGrant,
 } from '@qa-hub/shared';
+import { getMessages } from '../i18n';
 import type { ProgressRepo, ProgressState } from './types';
 
 export const STORAGE_KEY = 'qa-hub-guest-v1';
@@ -296,7 +297,7 @@ export class GuestStore implements ProgressRepo {
   /** Same merge rules as the server: known content only, existing items win, XP recomputed. */
   async importProgress(p: ImportPayload): Promise<ImportResult> {
     const catalog = this.catalog;
-    if (!catalog) throw new Error('Зміст ще завантажується, спробуй за мить');
+    if (!catalog) throw new Error(getMessages().store.contentLoading);
     const s = this.state;
     const now = this.now();
     const floor = Date.UTC(2020, 0, 1);

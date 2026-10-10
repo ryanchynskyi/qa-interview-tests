@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { XpDay } from '@qa-hub/shared';
+import { useT } from '../i18n';
 
 const W = 640;
 const H = 190;
@@ -28,6 +29,7 @@ function columnPath(x: number, y: number, w: number, h: number): string {
 
 /** XP per day: a single series, so one hue and no legend; the title names it. */
 export function XpChart({ days }: { days: XpDay[] }) {
+  const t = useT();
   const [active, setActive] = useState<number | null>(null);
   const max = Math.max(0, ...days.map((d) => d.xp));
   const top = niceCeil(max);
@@ -41,11 +43,11 @@ export function XpChart({ days }: { days: XpDay[] }) {
   return (
     <figure className="xpchart" style={{ margin: 0 }}>
       <figcaption className="note">
-        XP за останні {days.length} днів: <b className="hero">{total}</b> · активних днів:{' '}
+        {t.xp.lastDays(days.length)} <b className="hero">{total}</b> · {t.xp.activeDays}{' '}
         {activeDays}
       </figcaption>
       <div className="xpchart-plot">
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`XP по днях, усього ${total}`}>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.xp.chartLabel(total)}>
           {/* recessive axis: hairline baseline + top gridline, clean tick labels */}
           <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} className="axis" />
           <line x1={PAD.left} x2={W - PAD.right} y1={y(top)} y2={y(top)} className="grid" />
@@ -65,7 +67,7 @@ export function XpChart({ days }: { days: XpDay[] }) {
             textAnchor="end"
             dominantBaseline="middle"
           >
-            {top.toLocaleString('uk-UA')}
+            {top.toLocaleString(t.locale)}
           </text>
           {[0, Math.floor(days.length / 2), days.length - 1].map((i) => (
             <text
@@ -126,7 +128,7 @@ export function XpChart({ days }: { days: XpDay[] }) {
           >
             <b>{days[active]!.xp} XP</b>
             <span>
-              {new Date(`${days[active]!.date}T12:00:00`).toLocaleDateString('uk-UA', {
+              {new Date(`${days[active]!.date}T12:00:00`).toLocaleDateString(t.locale, {
                 day: 'numeric',
                 month: 'long',
               })}
@@ -135,12 +137,12 @@ export function XpChart({ days }: { days: XpDay[] }) {
         )}
       </div>
       <details className="note">
-        <summary>Показати таблицею</summary>
+        <summary>{t.xp.asTable}</summary>
         <div className="tw">
           <table>
             <thead>
               <tr>
-                <th>День</th>
+                <th>{t.xp.day}</th>
                 <th>XP</th>
               </tr>
             </thead>

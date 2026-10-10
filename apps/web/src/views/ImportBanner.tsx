@@ -3,32 +3,26 @@ import { Link } from 'react-router';
 import type { ImportResult } from '@qa-hub/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { useCatalog } from '../hooks/content';
+import { useT, type Messages } from '../i18n';
 import {
   dismissImport,
   findImportSources,
   isImportDismissed,
   markLegacyImported,
-  type ImportSource,
 } from '../progress/import-sources';
 import { useGuestStore, useStore } from '../progress/ProgressProvider';
 
-const LABEL: Record<ImportSource['kind'], string> = {
-  guest: 'гостьовий режим',
-  legacy: 'стара версія сайту',
-};
-
-export function summarize(r: ImportResult): string {
+export function summarize(r: ImportResult, t: Messages): string {
   const i = r.imported;
+  const m = t.importer;
   const parts = [
-    i.questions && `${i.questions} відповідей`,
-    i.cards && `${i.cards} карток Recall`,
-    i.articles && `${i.articles} прочитаних статей`,
-    i.attempts && `${i.attempts} спроб`,
+    i.questions && m.answers(i.questions),
+    i.cards && m.cards(i.cards),
+    i.articles && m.articles(i.articles),
+    i.attempts && m.attempts(i.attempts),
   ].filter(Boolean);
-  if (!parts.length) return 'Нового нічого: усе це вже є.';
-  return `Перенесено: ${parts.join(', ')}. +${r.xpGained} XP${
-    r.levelUp ? `, новий рівень ${r.levelUp.to}!` : '.'
-  }`;
+  if (!parts.length) return m.nothingNew;
+  return m.done(parts.join(', '), r.xpGained, r.levelUp?.to ?? null);
 }
 
 const addResults = (a: ImportResult, b: ImportResult): ImportResult => ({
@@ -59,6 +53,7 @@ function Banner() {
   const guest = useGuestStore();
   const guestState = useSyncExternalStore(guest.subscribe, guest.getSnapshot);
   const { data: catalog } = useCatalog();
+  const t = useT();
   const signedIn = auth.status === 'user';
   const owner = signedIn ? auth.user.id : 'guest';
   const [hidden, setHidden] = useState(() => isImportDismissed(owner));
@@ -78,7 +73,7 @@ function Banner() {
       <div className="card importcard" role="status">
         <p style={{ margin: 0 }}>{done}</p>
         <button type="button" className="linkbtn" onClick={() => setDone(null)}>
-          Закрити
+          {t.common.close}
         </button>
       </div>
     );
@@ -96,10 +91,10 @@ function Banner() {
         else markLegacyImported(owner);
         total = total ? addResults(total, r) : r;
       }
-      setDone(total ? summarize(total) : null);
+      setDone(total ? summarize(total, t) : null);
       setVersion((v) => v + 1);
     } catch (e) {
-      setError(`Не вдалося перенести: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t.importer.failed(e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -108,12 +103,11 @@ function Banner() {
   return (
     <div className="card importcard" data-testid="import-banner">
       <p style={{ marginTop: 0 }}>
-        <b>У цьому браузері є прогрес</b>:{' '}
+        <b>{t.importer.bannerTitle}</b>:{' '}
         {sources
-          .map((s) => `${LABEL[s.kind]} (${s.answers} відповідей, ${s.cards} карток)`)
+          .map((s) => t.importer.bannerSource(t.importer.source[s.kind], s.answers, s.cards))
           .join('; ')}
-        . Перенести {signedIn ? 'в акаунт' : 'сюди'}? XP перерахується за правилами нового сайту;
-        те, що вже є {signedIn ? 'в акаунті' : 'тут'}, не зміниться.
+        {t.importer.bannerAsk(signedIn)}
       </p>
       {error && (
         <p className="err" role="alert">
@@ -123,10 +117,10 @@ function Banner() {
       <div className="actions" style={{ marginTop: 0 }}>
         <div className="left">
           <button type="button" className="btn primary" disabled={busy} onClick={() => void run()}>
-            {busy ? 'Переношу…' : 'Перенести'}
+            {busy ? t.importer.moving : t.importer.move}
           </button>
           <button type="button" className="btn" disabled={busy} onClick={() => setHidden(true)}>
-            Пізніше
+            {t.importer.later}
           </button>
         </div>
         <button
@@ -138,11 +132,11 @@ function Banner() {
             setHidden(true);
           }}
         >
-          Не пропонувати
+          {t.importer.never}
         </button>
       </div>
       <p className="note" style={{ marginBottom: 0 }}>
-        Прогрес з іншого браузера можна перенести через <Link to="/import">резервну копію</Link>.
+        {t.importer.otherBrowser(<Link to="/import">{t.importer.backup}</Link>)}
       </p>
     </div>
   );

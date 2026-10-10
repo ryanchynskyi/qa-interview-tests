@@ -3,11 +3,14 @@
  * which never validates requests itself, can leave zod out.
  */
 import { z } from 'zod';
+import { contentLangSchema } from './translation.schema';
 
 export const checkAnswerSchema = z.object({
   questionId: z.string().min(1).max(64),
   /** Index into `options`; null means skipped. */
   choice: z.number().int().min(0).max(9).nullable(),
+  /** Language of the explanation in the response. */
+  lang: contentLangSchema.optional(),
 });
 export type CheckAnswerRequest = z.infer<typeof checkAnswerSchema>;
 

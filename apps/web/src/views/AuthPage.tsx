@@ -3,20 +3,22 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { api, googleSignInUrl, HttpError } from '../api';
 import { useAuth } from '../auth/AuthProvider';
+import { useT, type Messages } from '../i18n';
+import { errorText } from '../lib/ui';
 
-const MESSAGES: Record<string, string> = {
-  invalid_credentials: 'Невірний email або пароль.',
-  email_taken: 'Акаунт з таким email вже існує. Спробуй увійти.',
-  rate_limited: 'Забагато спроб. Зачекай хвилину.',
-  google_cancelled: 'Вхід через Google скасовано.',
-  google_state: 'Сесія входу через Google застаріла. Спробуй ще раз.',
-  google_email_unverified: 'Google не підтвердив цей email, тож увійти з ним не можна.',
-  google_disabled: 'Вхід через Google зараз недоступний.',
-};
-const GOOGLE_FALLBACK = 'Не вдалося увійти через Google. Спробуй ще раз.';
+/** An error to show: an API/Google code, or another failure. Rendered in the current language. */
+type AuthError = { code?: string; err?: unknown };
+
+function authErrorText(e: AuthError, t: Messages): string {
+  if (e.code === 'google_failed') return t.auth.googleFailed;
+  if (e.code && t.auth.errors[e.code]) return t.auth.errors[e.code]!;
+  if (e.code && !e.err) return t.auth.googleFailed;
+  return errorText(e.err, t);
+}
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const { state, login, register } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get('next') || '/dash';
@@ -29,9 +31,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState<string | null>(
-    googleError ? (MESSAGES[googleError] ?? GOOGLE_FALLBACK) : null,
-  );
+  const [error, setError] = useState<AuthError | null>(googleError ? { code: googleError } : null);
   const [busy, setBusy] = useState(false);
 
   if (state.status === 'user') return <Navigate to={next} replace />;
@@ -46,11 +46,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       else await register({ email, password, displayName: displayName.trim() || undefined });
       navigate(next, { replace: true });
     } catch (err) {
-      const code = err instanceof HttpError ? err.code : undefined;
-      setError(
-        (code && MESSAGES[code]) ??
-          (err instanceof Error ? err.message : 'Щось пішло не так. Спробуй ще раз.'),
-      );
+      setError({ code: err instanceof HttpError ? err.code : undefined, err });
     } finally {
       setBusy(false);
     }
@@ -58,24 +54,22 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="card authcard">
-      <h2>{isLogin ? 'Вхід' : 'Реєстрація'}</h2>
+      <h2>{isLogin ? t.auth.login : t.auth.register}</h2>
       <p className="note" style={{ marginTop: 0 }}>
-        {isLogin
-          ? 'Увійди, щоб прогрес, рівень і щоденні завдання зберігалися в акаунті й були доступні на всіх пристроях.'
-          : 'Акаунт зберігає прогрес на сервері: тести, Active Recall, XP, рівень і серію днів.'}
+        {isLogin ? t.auth.loginLead : t.auth.registerLead}
       </p>
       {providers.data?.google && (
         <>
           <a className="btn google" href={googleSignInUrl(next)} data-testid="google-signin">
-            <GoogleMark /> {isLogin ? 'Увійти через Google' : 'Зареєструватися через Google'}
+            <GoogleMark /> {isLogin ? t.auth.googleLogin : t.auth.googleRegister}
           </a>
-          <p className="or">або email і пароль</p>
+          <p className="or">{t.auth.or}</p>
         </>
       )}
       <form className="form" onSubmit={(e) => void submit(e)} noValidate={false}>
         {!isLogin && (
           <label>
-            <span>Імʼя (необовʼязково)</span>
+            <span>{t.auth.name}</span>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -95,7 +89,10 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           />
         </label>
         <label>
-          <span>Пароль{isLogin ? '' : ' (щонайменше 8 символів)'}</span>
+          <span>
+            {t.auth.password}
+            {isLogin ? '' : t.auth.passwordHint}
+          </span>
           <input
             type="password"
             required
@@ -108,27 +105,24 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         </label>
         {error && (
           <p className="err" role="alert">
-            {error}
+            {authErrorText(error, t)}
           </p>
         )}
         <div className="actions">
           <div className="left">
             <button type="submit" className="btn primary" disabled={busy}>
-              {busy ? 'Зачекай…' : isLogin ? 'Увійти' : 'Створити акаунт'}
+              {busy ? t.auth.wait : isLogin ? t.auth.submitLogin : t.auth.submitRegister}
             </button>
           </div>
           <Link
             className="golink"
             to={`${isLogin ? '/register' : '/login'}?next=${encodeURIComponent(next)}`}
           >
-            {isLogin ? 'Немає акаунта? Зареєструватися' : 'Вже є акаунт? Увійти'}
+            {isLogin ? t.auth.toRegister : t.auth.toLogin}
           </Link>
         </div>
       </form>
-      <p className="note">
-        Після входу ми запропонуємо перенести прогрес гостьового режиму та старої версії сайту в
-        акаунт.
-      </p>
+      <p className="note">{t.auth.after}</p>
     </div>
   );
 }
@@ -137,7 +131,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 export function GoogleDone() {
   const { state } = useAuth();
   const [params] = useSearchParams();
-  if (state.status === 'loading') return <p className="note">Входимо через Google…</p>;
+  const t = useT();
+  if (state.status === 'loading') return <p className="note">{t.auth.googleLoading}</p>;
   if (state.status === 'guest') return <Navigate to="/login?error=google_failed" replace />;
   return <Navigate to={params.get('next') || '/dash'} replace />;
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { payloadSize, type ImportPayload } from '@qa-hub/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { useCatalog } from '../hooks/content';
+import { useT } from '../i18n';
 import { LoadError, Loading } from '../lib/ui';
 import { parseLegacyBackup } from '../progress/import-sources';
 import { useStore } from '../progress/ProgressProvider';
@@ -13,6 +14,7 @@ export function ImportPage() {
   const { data: catalog, error: catErr } = useCatalog();
   const { state: auth } = useAuth();
   const repo = useStore();
+  const t = useT();
   const [text, setText] = useState('');
   const [payload, setPayload] = useState<ImportPayload | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -25,8 +27,8 @@ export function ImportPage() {
   const check = () => {
     setMessage(null);
     try {
-      const p = parseLegacyBackup(text, catalog);
-      if (!payloadSize(p)) throw new Error('Копія порожня: у ній немає відповідей чи оцінок.');
+      const p = parseLegacyBackup(text, catalog, t);
+      if (!payloadSize(p)) throw new Error(t.importer.emptyCopy);
       setPayload(p);
       setError(null);
     } catch (e) {
@@ -40,11 +42,11 @@ export function ImportPage() {
     setBusy(true);
     setError(null);
     try {
-      setMessage(summarize(await repo.importProgress(payload)));
+      setMessage(summarize(await repo.importProgress(payload), t));
       setPayload(null);
       setText('');
     } catch (e) {
-      setError(`Не вдалося перенести: ${e instanceof Error ? e.message : String(e)}`);
+      setError(t.importer.failed(e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -53,15 +55,14 @@ export function ImportPage() {
   const count = (o: object) => Object.keys(o).length;
   return (
     <div className="card backup" style={{ maxWidth: 760 }}>
-      <h2>Перенести прогрес зі старої версії</h2>
+      <h2>{t.importer.pageTitle}</h2>
       <p className="note" style={{ marginTop: 0 }}>
-        Відкрий стару версію сайту в браузері, де є твій прогрес, натисни «Скопіювати прогрес» і
-        встав текст сюди. Прогрес піде{' '}
-        {auth.status === 'user' ? `в акаунт ${auth.user.email}` : 'в цей браузер (гостьовий режим)'}
-        . Те, що вже є, не зміниться; XP перерахується за правилами нового сайту.
+        {t.importer.pageLead(
+          auth.status === 'user' ? t.importer.toAccount(auth.user.email) : t.importer.toBrowser,
+        )}
       </p>
       <textarea
-        aria-label="Скопійований прогрес"
+        aria-label={t.importer.pasted}
         spellCheck={false}
         value={text}
         onChange={(e) => {
@@ -72,8 +73,11 @@ export function ImportPage() {
       />
       {payload && (
         <p data-testid="import-preview">
-          У копії: {count(payload.questions)} відповідей, {count(payload.cards)} карток Recall,{' '}
-          {Object.values(payload.attempts).reduce((n, a) => n + a.length, 0)} спроб тестів.
+          {t.importer.inCopy(
+            count(payload.questions),
+            count(payload.cards),
+            Object.values(payload.attempts).reduce((n, a) => n + a.length, 0),
+          )}
         </p>
       )}
       {error && (
@@ -91,16 +95,16 @@ export function ImportPage() {
               disabled={busy}
               onClick={() => void run()}
             >
-              {busy ? 'Переношу…' : 'Перенести'}
+              {busy ? t.importer.moving : t.importer.move}
             </button>
           ) : (
             <button type="button" className="btn primary" disabled={!text.trim()} onClick={check}>
-              Перевірити
+              {t.importer.check}
             </button>
           )}
         </div>
         <Link className="golink" to="/dash">
-          До дашборду →
+          {t.common.toDashboardArrow}
         </Link>
       </div>
     </div>

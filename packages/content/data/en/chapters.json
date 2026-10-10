@@ -1,0 +1,123 @@
+{
+  "pw-arch": { "title": "Architecture and isolation", "subtitle": "" },
+  "pw-bcp": { "title": "Browser, Context, Page", "subtitle": "" },
+  "pw-loc": { "title": "Locators", "subtitle": "" },
+  "pw-wait": { "title": "Auto-waiting and web-first assertions", "subtitle": "" },
+  "pw-act": { "title": "Interaction: actions, tabs, frames, files, dialogs", "subtitle": "" },
+  "pw-fix": { "title": "Fixtures and test structure", "subtitle": "" },
+  "pw-net": { "title": "Network: route, mocks, API tests", "subtitle": "" },
+  "pw-auth": { "title": "Authentication and storageState", "subtitle": "" },
+  "pw-cfg": { "title": "Config, projects, parallelism, CI", "subtitle": "" },
+  "pw-dbg": { "title": "Debugging, trace viewer, reports, flaky tests", "subtitle": "" },
+  "pw-emu": { "title": "Emulation and environment", "subtitle": "" },
+  "cy-0": { "title": "Basics and architecture", "subtitle": "how the framework works" },
+  "cy-1": { "title": "Command queue and asynchrony", "subtitle": "why there is no await" },
+  "cy-2": { "title": "Retry-ability, waiting, timeouts", "subtitle": "where stability comes from" },
+  "cy-3": { "title": "Locators and working with the DOM", "subtitle": "finding elements and interacting" },
+  "cy-4": { "title": "Network: cy.intercept", "subtitle": "interception and mocks" },
+  "cy-5": { "title": "API testing", "subtitle": "cy.request from simple to Senior" },
+  "cy-6": { "title": "State, sessions, isolation", "subtitle": "login, cookies, several domains" },
+  "cy-7": { "title": "Framework architecture", "subtitle": "POM, commands, config, cy.task" },
+  "cy-8": { "title": "CI, parallelization, reports", "subtitle": "running in the pipeline" },
+  "cy-9": { "title": "Cypress vs Playwright", "subtitle": "comparison and migration" },
+  "cy-10": {
+    "title": "Outdated-answer traps",
+    "subtitle": "what the internet still says, and what is right"
+  },
+  "cy-11": {
+    "title": "Extra questions from common lists",
+    "subtitle": "hooks, assertions, Shadow DOM, debugging"
+  },
+  "ts-basics": { "title": "Basics: primitives, any, unknown, never, literals", "subtitle": "" },
+  "ts-obj": { "title": "Object types: interface and type, optional, readonly", "subtitle": "" },
+  "ts-narrow": { "title": "Type narrowing and type guards", "subtitle": "" },
+  "ts-gen": { "title": "Generics", "subtitle": "" },
+  "ts-util": { "title": "Utility types", "subtitle": "" },
+  "ts-class": { "title": "Classes and access modifiers", "subtitle": "" },
+  "ts-async": { "title": "Asynchrony: Promise, async/await, parallelism", "subtitle": "" },
+  "ts-adv": {
+    "title": "Advanced types: keyof, typeof, mapped, conditional, template literal",
+    "subtitle": ""
+  },
+  "ts-mod": { "title": "Modules and tsconfig", "subtitle": "" },
+  "ts-js": {
+    "title": "JS traps: numbers and money, strings, dates, objects and arrays",
+    "subtitle": ""
+  },
+  "mq-0": { "title": "Testing basics", "subtitle": "principles, SDLC, STLC, levels" },
+  "mq-1": { "title": "Types of testing", "subtitle": "smoke, regression, exploratory and more" },
+  "mq-2": { "title": "Test design techniques", "subtitle": "how to choose what to test" },
+  "mq-3": { "title": "Test documentation", "subtitle": "plans, cases, checklists, reports" },
+  "mq-4": { "title": "Bugs", "subtitle": "reports, severity, life cycle" },
+  "mq-5": { "title": "Processes and Agile", "subtitle": "Scrum, shift-left, releases" },
+  "mq-6": { "title": "Web and client-server", "subtitle": "HTTP, the browser, DevTools" },
+  "mq-7": { "title": "Manual API testing", "subtitle": "REST, Postman, Swagger" },
+  "mq-8": { "title": "SQL for QA", "subtitle": "checking data in the database" },
+  "mq-9": { "title": "Fintech specifics", "subtitle": "money, payments, transactions" },
+  "mq-10": {
+    "title": "Quality metrics",
+    "subtitle": "what to measure, how to count, what to avoid"
+  },
+  "mq-11": { "title": "Docker for QA", "subtitle": "containers, Compose, diagnostics" },
+  "mq-12": {
+    "title": "AI in testing",
+    "subtitle": "LLMs, prompts, hallucinations, testing AI features"
+  },
+  "mq-13": { "title": "Situational questions", "subtitle": "what will you do if…" },
+  "sq-0": { "title": "Database basics", "subtitle": "tables, keys, types, NULL" },
+  "sq-1": { "title": "SELECT and filtering", "subtitle": "WHERE, execution order, sorting" },
+  "sq-2": { "title": "Aggregation", "subtitle": "COUNT, GROUP BY, HAVING, CASE" },
+  "sq-3": { "title": "JOIN", "subtitle": "kinds of joins and their traps" },
+  "sq-4": { "title": "Subqueries, CTEs, set operations", "subtitle": "IN, EXISTS, WITH, UNION" },
+  "sq-5": {
+    "title": "Changing data and transactions",
+    "subtitle": "INSERT, UPDATE, DELETE, ACID, isolation"
+  },
+  "sq-6": {
+    "title": "Database structure",
+    "subtitle": "constraints, indexes, normalization, migrations"
+  },
+  "sq-7": { "title": "Window functions", "subtitle": "ranks, top-N, LAG, running totals" },
+  "sq-8": { "title": "SQL in QA work", "subtitle": "checks, integrity, data, automated tests" },
+  "sq-9": { "title": "Interview tasks", "subtitle": "write the query" },
+  "api-cs": { "title": "Client-server and REST", "subtitle": "" },
+  "api-anatomy": { "title": "Anatomy of a request and response", "subtitle": "" },
+  "api-methods": { "title": "HTTP methods and idempotency", "subtitle": "" },
+  "api-status": { "title": "Status codes", "subtitle": "" },
+  "api-postman": { "title": "Postman: structure and variables", "subtitle": "" },
+  "api-auth": { "title": "Authentication and authorization", "subtitle": "" },
+  "api-scripts": { "title": "Scripts and checks in Postman", "subtitle": "" },
+  "api-runner": { "title": "Runner, data-driven tests and Newman", "subtitle": "" },
+  "api-checklist": { "title": "Checklist: what to test in an endpoint", "subtitle": "" },
+  "api-faq": { "title": "Interview questions in brief", "subtitle": "" },
+  "api-design": {
+    "title": "API design: resources, pagination, versioning, GraphQL",
+    "subtitle": ""
+  },
+  "api-headers": { "title": "Headers, caching and CORS", "subtitle": "" },
+  "api-security": { "title": "API security", "subtitle": "" },
+  "api-contracts": {
+    "title": "Documentation and contracts: OpenAPI, JSON Schema, contract testing",
+    "subtitle": ""
+  },
+  "api-perf": { "title": "Performance and reliability", "subtitle": "" },
+  "sd-approach": { "title": "How to answer a System Design interview", "subtitle": "" },
+  "sd-framework": { "title": "Test framework architecture", "subtitle": "" },
+  "sd-data": { "title": "Test data and environments", "subtitle": "" },
+  "sd-ci": { "title": "CI/CD, parallelization and sharding", "subtitle": "" },
+  "sd-flaky": { "title": "Stability and flaky tests", "subtitle": "" },
+  "sd-report": { "title": "Reporting, metrics, observability", "subtitle": "" },
+  "sd-backend": { "title": "Backend basics: LB, cache, DB, queues", "subtitle": "" },
+  "sd-micro": { "title": "Microservices and test strategy", "subtitle": "" },
+  "sd-scale": { "title": "Scaling and reliability", "subtitle": "" },
+  "pt-pom": { "title": "Page Object Model", "subtitle": "" },
+  "pt-comp": { "title": "Page Component and composition", "subtitle": "" },
+  "pt-fixtures": { "title": "Fixtures as Dependency Injection", "subtitle": "" },
+  "pt-builder": { "title": "Builder and Test Data Builder", "subtitle": "" },
+  "pt-factory": { "title": "Factory and data factories", "subtitle": "" },
+  "pt-facade": { "title": "Facade, Steps and App Actions", "subtitle": "" },
+  "pt-strategy": { "title": "Strategy", "subtitle": "" },
+  "pt-singleton": { "title": "Singleton and global state", "subtitle": "" },
+  "pt-screenplay": { "title": "Screenplay: an overview", "subtitle": "" },
+  "pt-principles": { "title": "SOLID, DRY, KISS in tests, and anti-patterns", "subtitle": "" }
+}

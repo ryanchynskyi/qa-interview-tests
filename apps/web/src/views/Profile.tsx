@@ -13,15 +13,13 @@ import {
 import { api, HttpError } from '../api';
 import { useAuth } from '../auth/AuthProvider';
 import { useNow } from '../lib/stores';
-import { LoadError, Loading } from '../lib/ui';
+import { useT } from '../i18n';
+import { errorText, LoadError, Loading } from '../lib/ui';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 import { ServerStore } from '../progress/server-store';
 import { XpChart } from './XpChart';
 
 const DAYS = 30;
-
-const errorText = (e: unknown) =>
-  e instanceof HttpError || e instanceof Error ? e.message : 'Щось пішло не так';
 
 /** Guests: XP per local day from the local XP log (last 100 events). */
 function guestDays(log: { amount: number; at: number }[], tz: string, now: number): XpDay[] {
@@ -41,6 +39,7 @@ function guestDays(log: { amount: number; at: number }[], tz: string, now: numbe
 export function Profile() {
   const { state } = useAuth();
   const progress = useProgress();
+  const t = useT();
   const now = useNow();
   const lvl = levelFromXp(progress.stats.totalXp);
   const streak = currentStreak(progress.stats, localDate(now, progress.timeZone));
@@ -64,23 +63,25 @@ export function Profile() {
   return (
     <>
       <section className="card" style={{ marginBottom: 14 }}>
-        <h2>{signedIn ? state.user.displayName : 'Гість'}</h2>
+        <h2>{signedIn ? state.user.displayName : t.profile.guest}</h2>
         <div className="stats">
           <div>
             <b>{lvl.level}</b>
-            <span>рівень · {lvl.title}</span>
+            <span>
+              {t.profile.level} · {lvl.title}
+            </span>
           </div>
           <div>
             <b>{progress.stats.totalXp}</b>
-            <span>XP усього</span>
+            <span>{t.profile.xpTotal}</span>
           </div>
           <div>
             <b>{streak}</b>
-            <span>днів поспіль зараз</span>
+            <span>{t.profile.streakNow}</span>
           </div>
           <div>
             <b>{progress.stats.longestStreak}</b>
-            <span>найдовша серія</span>
+            <span>{t.profile.streakBest}</span>
           </div>
         </div>
         {days ? (
@@ -92,9 +93,9 @@ export function Profile() {
         )}
         {!signedIn && (
           <p className="note">
-            Графік гостя будується з останніх 100 подій у цьому браузері.{' '}
-            <Link to="/register?next=%2Fprofile">Створи акаунт</Link>, щоб зберігати прогрес на
-            сервері.
+            {t.profile.guestChart(
+              <Link to="/register?next=%2Fprofile">{t.profile.createAccount}</Link>,
+            )}
           </p>
         )}
       </section>
@@ -121,6 +122,7 @@ function AccountSettings() {
 function NameAndZone({ info }: { info: AccountInfo }) {
   const { updateUser } = useAuth();
   const store = useStore();
+  const t = useT();
   const qc = useQueryClient();
   const [name, setName] = useState(info.displayName);
   const [zone, setZone] = useState(info.timeZone);
@@ -147,22 +149,22 @@ function NameAndZone({ info }: { info: AccountInfo }) {
       updateUser(user);
       if (zone !== info.timeZone && store instanceof ServerStore) await store.load();
       await qc.invalidateQueries({ queryKey: ['account'] });
-      setMsg({ ok: true, text: 'Збережено.' });
+      setMsg({ ok: true, text: t.common.saved });
     } catch (err) {
-      setMsg({ ok: false, text: errorText(err) });
+      setMsg({ ok: false, text: errorText(err, t) });
     }
   };
 
   return (
     <section className="card">
-      <h3>Імʼя та часовий пояс</h3>
+      <h3>{t.profile.nameAndZone}</h3>
       <form className="form" onSubmit={(e) => void submit(e)}>
         <label>
-          <span>Імʼя</span>
+          <span>{t.profile.name}</span>
           <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
         </label>
         <label>
-          <span>Часовий пояс: щоденні завдання оновлюються опівночі за ним</span>
+          <span>{t.profile.zone}</span>
           <select
             value={zone}
             onChange={(e) => setZone(e.target.value)}
@@ -177,8 +179,8 @@ function NameAndZone({ info }: { info: AccountInfo }) {
         </label>
         {info.timeZoneLockedUntil ? (
           <p className="note" style={{ margin: 0 }}>
-            Часовий пояс можна змінювати раз на добу; наступна зміна після{' '}
-            {new Date(info.timeZoneLockedUntil).toLocaleString('uk-UA', {
+            {t.profile.zoneCooldown}{' '}
+            {new Date(info.timeZoneLockedUntil).toLocaleString(t.locale, {
               dateStyle: 'short',
               timeStyle: 'short',
             })}
@@ -187,14 +189,14 @@ function NameAndZone({ info }: { info: AccountInfo }) {
         ) : (
           zone !== browserZone && (
             <button type="button" className="linkbtn" onClick={() => setZone(browserZone)}>
-              Взяти з цього пристрою ({browserZone})
+              {t.profile.zoneFromDevice(browserZone)}
             </button>
           )
         )}
         {msg && <p className={msg.ok ? 'ok-msg' : 'err'}>{msg.text}</p>}
         <div className="actions" style={{ marginTop: 0 }}>
           <button type="submit" className="btn primary">
-            Зберегти
+            {t.common.save}
           </button>
         </div>
       </form>
@@ -204,6 +206,7 @@ function NameAndZone({ info }: { info: AccountInfo }) {
 
 function Password({ info }: { info: AccountInfo }) {
   const qc = useQueryClient();
+  const t = useT();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -219,28 +222,28 @@ function Password({ info }: { info: AccountInfo }) {
       setCurrent('');
       setNext('');
       await qc.invalidateQueries({ queryKey: ['account'] });
-      setMsg({ ok: true, text: 'Пароль збережено. Інші пристрої вийшли з акаунта.' });
+      setMsg({ ok: true, text: t.profile.passwordSaved });
     } catch (err) {
       const code = err instanceof HttpError ? err.code : undefined;
       setMsg({
         ok: false,
-        text: code === 'invalid_credentials' ? 'Поточний пароль невірний.' : errorText(err),
+        text: code === 'invalid_credentials' ? t.profile.wrongPassword : errorText(err, t),
       });
     }
   };
 
   return (
     <section className="card">
-      <h3>{info.hasPassword ? 'Змінити пароль' : 'Додати пароль'}</h3>
+      <h3>{info.hasPassword ? t.profile.changePassword : t.profile.addPassword}</h3>
       {!info.hasPassword && (
         <p className="note" style={{ marginTop: 0 }}>
-          Зараз ти входиш через Google. З паролем можна входити ще й за email.
+          {t.profile.viaGoogle}
         </p>
       )}
       <form className="form" onSubmit={(e) => void submit(e)}>
         {info.hasPassword && (
           <label>
-            <span>Поточний пароль</span>
+            <span>{t.profile.currentPassword}</span>
             <input
               type="password"
               required
@@ -251,7 +254,7 @@ function Password({ info }: { info: AccountInfo }) {
           </label>
         )}
         <label>
-          <span>Новий пароль (щонайменше 8 символів)</span>
+          <span>{t.profile.newPassword}</span>
           <input
             type="password"
             required
@@ -265,7 +268,7 @@ function Password({ info }: { info: AccountInfo }) {
         {msg && <p className={msg.ok ? 'ok-msg' : 'err'}>{msg.text}</p>}
         <div className="actions" style={{ marginTop: 0 }}>
           <button type="submit" className="btn primary">
-            Зберегти пароль
+            {t.profile.savePassword}
           </button>
         </div>
       </form>
@@ -274,32 +277,29 @@ function Password({ info }: { info: AccountInfo }) {
 }
 
 function SignInMethods({ info }: { info: AccountInfo }) {
+  const t = useT();
   const google = info.providers.includes('google');
   return (
     <section className="card">
-      <h3>Способи входу</h3>
+      <h3>{t.profile.methods}</h3>
       <div className="tw" style={{ margin: 0 }}>
         <table>
           <tbody>
             <tr>
-              <td>Email і пароль</td>
-              <td>{info.hasPassword ? 'увімкнено' : 'немає пароля'}</td>
+              <td>{t.profile.emailPassword}</td>
+              <td>{info.hasPassword ? t.profile.on : t.profile.noPassword}</td>
             </tr>
             <tr>
               <td>Google</td>
-              <td>{google ? 'підключено' : 'не підключено'}</td>
+              <td>{google ? t.profile.connected : t.profile.notConnected}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      {!google && (
-        <p className="note">
-          Щоб підключити Google, вийди й увійди через Google з тим самим email ({info.email}).
-        </p>
-      )}
+      {!google && <p className="note">{t.profile.linkGoogle(info.email)}</p>}
       <p className="note" style={{ marginBottom: 0 }}>
-        Акаунт створено{' '}
-        {new Date(info.createdAt).toLocaleDateString('uk-UA', { dateStyle: 'long' })}.
+        {t.profile.created}{' '}
+        {new Date(info.createdAt).toLocaleDateString(t.locale, { dateStyle: 'long' })}.
       </p>
     </section>
   );
@@ -307,6 +307,7 @@ function SignInMethods({ info }: { info: AccountInfo }) {
 
 function DeleteAccount({ info }: { info: AccountInfo }) {
   const { forget } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -321,17 +322,16 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
       forget();
       navigate('/dash', { replace: true });
     } catch (err) {
-      setError(errorText(err));
+      setError(errorText(err, t));
       setBusy(false);
     }
   };
 
   return (
     <section className="card danger">
-      <h3>Видалити акаунт</h3>
+      <h3>{t.profile.deleteTitle}</h3>
       <p className="note" style={{ marginTop: 0 }}>
-        Назавжди видаляє акаунт і весь прогрес на сервері: відповіді, картки, XP, серію. Скасувати
-        не можна. Щоб підтвердити, введи свій email.
+        {t.profile.deleteText}
       </p>
       <div className="form">
         <label>
@@ -340,7 +340,7 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             autoComplete="off"
-            aria-label="Email для підтвердження"
+            aria-label={t.profile.deleteConfirmLabel}
           />
         </label>
         {error && <p className="err">{error}</p>}
@@ -352,7 +352,7 @@ function DeleteAccount({ info }: { info: AccountInfo }) {
             disabled={!matches || busy}
             onClick={() => void remove()}
           >
-            {busy ? 'Видаляю…' : 'Видалити акаунт назавжди'}
+            {busy ? t.profile.deleting : t.profile.deleteForever}
           </button>
         </div>
       </div>

@@ -163,3 +163,26 @@ Milestones, ordered so each step reskins as much as possible for the effort:
    sticky action bar on mobile.
 5. ~~Recall + Knowledge Base~~: card and rating buttons; KB sidebar → select on mobile, article styling.
 6. ~~Profile, Auth, Import~~, XP chart, toasts; final pass at 360/390/768/1280 px, contrast, e2e green.
+
+## M10 — English localization (in progress, on `develop`; details in HANDOFF.md)
+
+Permanent rules:
+
+- UA stays the default; EN is chosen with the UA/EN switch (top bar on desktop, footer everywhere),
+  saved in localStorage `qa-hub-lang`. Never auto-pick EN from the browser language.
+- UI strings live only in `apps/web/src/i18n/{uk,en}.tsx` (same shape, `Messages`), read with
+  `useT()`; code outside components takes the messages object as an argument (`describeTask`,
+  `activityMessages`, `summarize`). No Ukrainian literals in components. Dates use `t.locale`.
+- The e2e specs assert Ukrainian copy: change `uk.tsx` text only together with the specs.
+- Content: Ukrainian is the source. English is an overlay in `packages/content/data/en/*.json`, keyed
+  by the source ids (hashes of the Ukrainian text, never re-key them). Question options are
+  translated index for index, because `correctIndex` is checked server-side by index. Missing fields
+  fall back to Ukrainian. Overlays are not in the database: the API loads them at start
+  (`buildApp({ translations })`, default from `loadTranslation('en')`).
+- API: content endpoints take `?lang=en`, `POST /quiz/check` takes `lang`; unknown values mean `uk`.
+  English KB search runs in memory over the English text. Web query keys include the language.
+- `npm run content:check-en` reports coverage and problems; `packages/content/test` fails on problems.
+- Shell heredocs and `node -e` with template literals lose backticks and `${…}` in Git Bash: write
+  code and translation files with the file tools, not through the shell.
+
+Milestones: 1. UI i18n and switch (done). 2. Overlay, loader, validation, API `lang` (done). 3. Translate content (names done; questions 81/704; recall cards and articles not started). 4. Final pass: e2e for EN, privacy page in EN, README.

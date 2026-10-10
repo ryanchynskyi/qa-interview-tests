@@ -10,6 +10,7 @@ import {
 } from '../hooks/content';
 import { createStore } from '../lib/stores';
 import { TopicIcon } from '../lib/topic-icons';
+import { useT } from '../i18n';
 import { LoadError, Loading } from '../lib/ui';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 
@@ -35,6 +36,7 @@ export function KnowledgeBase() {
   const [search, setSearch] = useState({ q: '', at: pathname });
   const query = search.at === pathname ? search.q : '';
   const debounced = useDebounced(query.trim(), 250);
+  const t = useT();
 
   if (error) return <LoadError error={error} retry={() => void refetch()} />;
   if (!idx) return <Loading />;
@@ -54,17 +56,17 @@ export function KnowledgeBase() {
   const searching = query.trim().length >= 2 && debounced.length >= 2;
   return (
     <div className="kb">
-      <nav className="side" aria-label="Розділи бази знань">
-        {idx.catalog.topics.map((t) => (
-          <details key={t.id} open={chapter?.topicId === t.id}>
+      <nav className="side" aria-label={t.kb.sidebar}>
+        {idx.catalog.topics.map((tp) => (
+          <details key={tp.id} open={chapter?.topicId === tp.id}>
             <summary>
-              <TopicIcon id={t.id} size={16} />
-              {t.name}
+              <TopicIcon id={tp.id} size={16} />
+              {tp.name}
             </summary>
-            {(idx.chaptersByTopic.get(t.id) ?? []).map((ch) => (
+            {(idx.chaptersByTopic.get(tp.id) ?? []).map((ch) => (
               <Link
                 key={ch.id}
-                to={`/kb/${t.id}/${ch.id}`}
+                to={`/kb/${tp.id}/${ch.id}`}
                 aria-current={ch.id === chapter?.id ? 'page' : undefined}
               >
                 {ch.title}
@@ -78,8 +80,8 @@ export function KnowledgeBase() {
         <div className="kbtop">
           <input
             type="search"
-            placeholder="Пошук по всій базі знань"
-            aria-label="Пошук"
+            placeholder={t.kb.search}
+            aria-label={t.kb.searchLabel}
             value={query}
             onChange={(e) => setSearch({ q: e.target.value, at: pathname })}
           />
@@ -107,20 +109,21 @@ function useDebounced<T>(value: T, ms: number): T {
 
 function ChapterSelect({ idx, current }: { idx: CatalogIndex; current: string }) {
   const navigate = useNavigate();
+  const t = useT();
   return (
     <select
       className="kbsel"
-      aria-label="Розділ"
+      aria-label={t.kb.chapter}
       value={current}
       onChange={(e) => {
         const ch = idx.chapter.get(e.target.value);
         if (ch) navigate(`/kb/${ch.topicId}/${ch.id}`);
       }}
     >
-      {!current && <option value="">Оберіть розділ</option>}
-      {idx.catalog.topics.map((t) => (
-        <optgroup key={t.id} label={t.name}>
-          {(idx.chaptersByTopic.get(t.id) ?? []).map((ch) => (
+      {!current && <option value="">{t.kb.pickChapter}</option>}
+      {idx.catalog.topics.map((tp) => (
+        <optgroup key={tp.id} label={tp.name}>
+          {(idx.chaptersByTopic.get(tp.id) ?? []).map((ch) => (
             <option key={ch.id} value={ch.id}>
               {ch.title}
             </option>
@@ -132,27 +135,27 @@ function ChapterSelect({ idx, current }: { idx: CatalogIndex; current: string })
 }
 
 function Landing({ idx }: { idx: CatalogIndex }) {
+  const t = useT();
   return (
     <div className="card">
-      <h2>Knowledge Base</h2>
-      <p style={{ marginTop: 0 }}>
-        Теорія по всіх темах: гайди Cypress, Manual QA і SQL, конспект «Knowledge Base: Manual/Auto
-        QA (Middle)», шпаргалка Postman і нові розділи з Playwright, TypeScript, System Design і
-        патернів. Розділи відповідають темам тестів: з кожного питання є посилання сюди.
-      </p>
-      <div className="dgrid" style={{ margin: 0 }}>
-        {idx.catalog.topics.map((t) => {
-          const chs = idx.chaptersByTopic.get(t.id) ?? [];
+      <h2>{t.kb.title}</h2>
+      <p style={{ marginTop: 0 }}>{t.kb.intro}</p>
+      <div className="kbland">
+        {idx.catalog.topics.map((tp) => {
+          const chs = idx.chaptersByTopic.get(tp.id) ?? [];
           return (
-            <Link
-              key={t.id}
-              className="sk"
-              style={{ textDecoration: 'none', color: 'inherit' }}
-              to={`/kb/${t.id}`}
-            >
-              <b>{t.name}</b>
-              <span className="ln">
-                {chs.length} розділів · {chs.reduce((n, c) => n + c.articleCount, 0)} статей
+            <Link key={tp.id} className="kbtopic" to={`/kb/${tp.id}`}>
+              <span className="ibox">
+                <TopicIcon id={tp.id} />
+              </span>
+              <span>
+                <b>{tp.name}</b>
+                <small>
+                  {t.kb.topicStats(
+                    chs.length,
+                    chs.reduce((n, c) => n + c.articleCount, 0),
+                  )}
+                </small>
               </span>
             </Link>
           );
@@ -164,12 +167,13 @@ function Landing({ idx }: { idx: CatalogIndex }) {
 
 function SearchResults({ idx, q }: { idx: CatalogIndex; q: string }) {
   const { data: hits, error, isPending } = useKbSearch(q);
+  const t = useT();
   if (error) return <LoadError error={error} />;
   if (isPending || !hits) return <Loading />;
   return (
     <div className="card res" data-testid="search-results">
       <h3>
-        Знайдено: {hits.length}
+        {t.kb.found(hits.length)}
         {hits.length === 40 ? '+' : ''}
       </h3>
       {hits.length ? (
@@ -183,7 +187,7 @@ function SearchResults({ idx, q }: { idx: CatalogIndex; q: string }) {
           </Link>
         ))
       ) : (
-        <p className="note">Нічого не знайдено. Спробуй інше слово або англійський термін.</p>
+        <p className="note">{t.kb.nothing}</p>
       )}
     </div>
   );
@@ -203,6 +207,7 @@ function ChapterView({
   const progress = useProgress();
   const navigate = useNavigate();
   const opened = openedStore.use();
+  const t = useT();
 
   const siblings = idx.chaptersByTopic.get(chapter.topicId) ?? [];
   const pos = siblings.findIndex((c) => c.id === chapter.id);
@@ -259,12 +264,8 @@ function ChapterView({
     <div className="card" data-testid="chapter">
       <div className="meta">
         <span className="tag">{idx.topicName.get(chapter.topicId)}</span>
-        <span>{data.articles.length} статей</span>
-        {quiz.n > 0 && (
-          <span>
-            тести {quiz.y}/{quiz.n}
-          </span>
-        )}
+        <span>{t.kb.articles(data.articles.length)}</span>
+        {quiz.n > 0 && <span>{t.kb.tests(quiz.y, quiz.n)}</span>}
       </div>
       <h2>{chapter.title}</h2>
       {chapter.subtitle && (
@@ -280,7 +281,7 @@ function ChapterView({
               className="btn sm"
               onClick={() => navigate(`/quiz/${quiz.sectionId}?ch=${chapter.id}`)}
             >
-              Тести з розділу
+              {t.kb.chapterTests}
             </button>
           )}
           {cards > 0 && (
@@ -293,7 +294,7 @@ function ChapterView({
             className="btn sm ghost"
             onClick={() => data.articles.forEach((a) => toggle(a.id, !allOpen, false))}
           >
-            {allOpen ? 'Згорнути всі' : 'Розгорнути всі'}
+            {allOpen ? t.kb.collapseAll : t.kb.expandAll}
           </button>
         </div>
       </div>

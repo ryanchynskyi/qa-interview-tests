@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
+import { useT } from './i18n';
 
 const RELOAD_KEY = 'qa-hub-chunk-reload-at';
 
@@ -30,6 +31,7 @@ export function reloadForNewBuild(): boolean {
 /** Route error screen in the app's style, instead of React Router's developer page. */
 export function RouteError() {
   const error = useRouteError();
+  const t = useT();
   const chunk = isChunkLoadError(error);
 
   useEffect(() => {
@@ -45,22 +47,18 @@ export function RouteError() {
   return (
     <div className="card errpage" role="alert">
       <p className="prompt">$ qa-hub run</p>
-      <h1>{chunk ? 'Вийшла нова версія сайту' : 'Щось пішло не так'}</h1>
-      <p className="note">
-        {chunk
-          ? 'Ця вкладка ще працювала зі старою версією. Онови сторінку, щоб завантажити нову: прогрес нікуди не дівся.'
-          : 'Сторінка не відкрилась. Спробуй оновити її або повернутись на дашборд. Прогрес збережено.'}
-      </p>
+      <h1>{chunk ? t.error.newVersionTitle : t.error.title}</h1>
+      <p className="note">{chunk ? t.error.newVersionText : t.error.text}</p>
       <pre className="errline">
         <span className="bad">✗ FAIL</span> {detail}
       </pre>
       <div className="actions">
         <div className="left">
           <button type="button" className="btn primary" onClick={() => window.location.reload()}>
-            Оновити сторінку
+            {t.error.reload}
           </button>
           <Link className="btn" to="/dash" reloadDocument>
-            На дашборд
+            {t.error.toDashboard}
           </Link>
         </div>
       </div>

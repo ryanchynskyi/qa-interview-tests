@@ -6,3 +6,5 @@ export * from './api';
 export * from './api.schema';
 export * from './import';
 export * from './import.schema';
+export * from './translation';
+export * from './translation.schema';

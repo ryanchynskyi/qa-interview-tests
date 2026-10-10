@@ -1,5 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { checkAnswerSchema, type CheckAnswerWithProgress } from '@qa-hub/shared';
+import {
+  checkAnswerSchema,
+  translateExplanation,
+  type CheckAnswerWithProgress,
+} from '@qa-hub/shared';
 
 export const quizRoutes: FastifyPluginAsync = async (app) => {
   /**
@@ -22,10 +26,11 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       }
       const outcome =
         body.choice === null ? 'skipped' : body.choice === q.correctIndex ? 'correct' : 'wrong';
+      const tr = app.translation(body.lang ?? 'uk');
       const res: CheckAnswerWithProgress = {
         outcome,
         correctIndex: q.correctIndex,
-        explanation: q.explanation,
+        explanation: tr ? translateExplanation(body.questionId, q.explanation, tr) : q.explanation,
       };
       if (userId) res.progress = await app.progress.answer(userId, body.questionId, outcome);
       return res;

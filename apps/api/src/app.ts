@@ -3,7 +3,13 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import type { PrismaClient } from '@prisma/client';
-import type { Catalog } from '@qa-hub/shared';
+import { loadTranslation } from '@qa-hub/content';
+import {
+  translateCatalog,
+  type Catalog,
+  type ContentLang,
+  type ContentTranslation,
+} from '@qa-hub/shared';
 import { ZodError } from 'zod';
 import type { GoogleOAuth } from './auth/google';
 import { verifyAccessToken } from './auth/tokens';
@@ -26,6 +32,10 @@ declare module 'fastify' {
     now: () => number;
     auth: { jwtSecret: string; cookieSecure: boolean; crossSite: boolean; rateLimit: number };
     catalog: () => Promise<Catalog>;
+    /** Translation overlay for a language; null for Ukrainian (the source) or a missing one. */
+    translation: (lang: ContentLang) => ContentTranslation | null;
+    /** The catalog with names in the given language. */
+    catalogIn: (lang: ContentLang) => Promise<Catalog>;
     progress: ProgressService;
     /** Null when GOOGLE_* isn't configured. */
     google: GoogleOAuth | null;
@@ -58,6 +68,8 @@ export interface AppDeps {
   trustProxy?: boolean | number;
   /** Header with the client IP set by the hosting edge; rate limits key on it (CLIENT_IP_HEADER). */
   clientIpHeader?: string;
+  /** Content translations; defaults to the overlays in packages/content/data. */
+  translations?: Partial<Record<Exclude<ContentLang, 'uk'>, ContentTranslation>>;
 }
 
 /**
@@ -78,6 +90,7 @@ export async function buildApp({
   logger = false,
   trustProxy = false,
   clientIpHeader,
+  translations = { en: loadTranslation('en') },
 }: AppDeps) {
   const app = Fastify({
     logger,
@@ -97,6 +110,21 @@ export async function buildApp({
     rateLimit: authRateLimit,
   });
   app.decorate('catalog', catalogCache(db));
+  app.decorate('translation', (lang: ContentLang) =>
+    lang === 'uk' ? null : (translations[lang] ?? null),
+  );
+  const translatedCatalogs = new Map<ContentLang, Promise<Catalog>>();
+  app.decorate('catalogIn', (lang: ContentLang) => {
+    const tr = app.translation(lang);
+    if (!tr) return app.catalog();
+    let c = translatedCatalogs.get(lang);
+    if (!c) {
+      c = app.catalog().then((uk) => translateCatalog(uk, tr));
+      c.catch(() => translatedCatalogs.delete(lang));
+      translatedCatalogs.set(lang, c);
+    }
+    return c;
+  });
   app.decorate('progress', new ProgressService(db, app.catalog, now));
   app.decorate('google', google);
   app.decorate('webAppUrl', webAppUrl);

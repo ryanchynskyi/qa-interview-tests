@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { titleForLevel, type ActivityResult, type Catalog } from '@qa-hub/shared';
+import { getMessages, type Messages } from '../i18n';
 import { createStore } from './stores';
 import { describeTask } from './tasks';
 
@@ -26,23 +27,22 @@ export function toast(text: string, tone: Toast['tone'] = 'xp') {
 export function activityMessages(
   r: ActivityResult,
   catalog: Catalog | undefined,
+  m: Messages = getMessages(),
 ): { text: string; tone: Toast['tone'] }[] {
   const out: { text: string; tone: Toast['tone'] }[] = [];
   for (const t of r.completedTasks) {
-    const name = catalog ? describeTask(t, catalog).title : 'Завдання дня';
-    out.push({ text: `Завдання виконано: ${name} · +${t.rewardXp} XP`, tone: 'xp' });
+    const name = catalog ? describeTask(t, catalog, m).title : m.tasks.daily;
+    out.push({ text: m.toasts.taskDone(name, t.rewardXp), tone: 'xp' });
   }
   for (const g of r.grants) {
-    if (g.reason === 'daily_all_done')
-      out.push({ text: `Усі завдання на сьогодні виконано! +${g.amount} XP`, tone: 'xp' });
+    if (g.reason === 'daily_all_done') out.push({ text: m.toasts.allDone(g.amount), tone: 'xp' });
     if (g.reason === 'streak')
-      out.push({ text: `Серія: ${r.stats.streak} дн. поспіль · +${g.amount} XP`, tone: 'xp' });
-    if (g.reason === 'quiz_bonus')
-      out.push({ text: `Бонус за точний тест · +${g.amount} XP`, tone: 'xp' });
+      out.push({ text: m.toasts.streak(r.stats.streak, g.amount), tone: 'xp' });
+    if (g.reason === 'quiz_bonus') out.push({ text: m.toasts.quizBonus(g.amount), tone: 'xp' });
   }
   if (r.levelUp) {
     out.push({
-      text: `Новий рівень ${r.levelUp.to}: ${titleForLevel(r.levelUp.to)}!`,
+      text: m.toasts.levelUp(r.levelUp.to, titleForLevel(r.levelUp.to)),
       tone: 'level',
     });
   }

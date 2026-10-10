@@ -13,6 +13,7 @@
   },
   "scripts": {
     "content:extract": "tsx packages/content/scripts/extract.ts",
+    "content:check-en": "tsx packages/content/scripts/check-translation.ts",
     "db:start": "npm run db:start -w @qa-hub/api",
     "db:migrate": "npm run db:migrate -w @qa-hub/api",
     "db:seed": "npm run db:seed -w @qa-hub/api",
