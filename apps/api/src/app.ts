@@ -116,7 +116,13 @@ export async function buildApp({
     return userId;
   });
 
-  await app.register(cors, { origin: webOrigin, credentials: true });
+  await app.register(cors, {
+    origin: webOrigin,
+    credentials: true,
+    // The plugin's default is GET,HEAD,POST; the profile page also uses PATCH and DELETE, which
+    // a web app on another origin can only send after this preflight allows them.
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+  });
   // CSRF guard: browsers send Origin on every cross-origin and every POST request, so a
   // write from any other site is refused. Requests without Origin (curl, tests) pass; they
   // can't carry a victim's cookies anyway.

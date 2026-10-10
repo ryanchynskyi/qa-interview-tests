@@ -56,6 +56,24 @@ describe.skipIf(!TEST_URL)('web app on another site than the API', () => {
     expect(read.statusCode).toBe(200);
   });
 
+  it('lets the web app send every method the API uses (CORS preflight)', async () => {
+    for (const method of ['PATCH', 'DELETE']) {
+      const res = await app.inject({
+        method: 'OPTIONS',
+        url: '/me',
+        headers: {
+          origin: WEB,
+          'access-control-request-method': method,
+          'access-control-request-headers': 'authorization,content-type',
+        },
+      });
+      expect(res.statusCode).toBe(204);
+      expect(res.headers['access-control-allow-origin']).toBe(WEB);
+      expect(String(res.headers['access-control-allow-methods'])).toContain(method);
+      expect(String(res.headers['access-control-allow-headers'])).toMatch(/authorization/i);
+    }
+  });
+
   it('config insists on HTTPS for cross-site cookies', () => {
     const base = { DATABASE_URL: 'postgresql://x@localhost/db', JWT_SECRET };
     expect(() => loadConfig({ ...base, COOKIE_SAMESITE: 'none' })).toThrow(/COOKIE_SECURE/);
