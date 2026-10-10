@@ -115,9 +115,10 @@ export function Layout() {
               ? 'Пробіл показати відповідь, 1–5 оцінка.'
               : ''}
         </span>
-        <Link className="note" to="/import">
-          Перенести прогрес зі старої версії
-        </Link>
+        <span className="note">
+          <Link to="/import">Перенести прогрес зі старої версії</Link> ·{' '}
+          <a href={`${import.meta.env.BASE_URL}privacy.html`}>Конфіденційність</a>
+        </span>
       </footer>
     </div>
   );

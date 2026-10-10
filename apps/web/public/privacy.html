@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Політика конфіденційності · QA Interview Hub</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfaf7;
+        --fg: #1d1d1b;
+        --muted: #5f5e58;
+        --line: #e4e1d8;
+        --accent: #2f5bd3;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #15161a;
+          --fg: #ecebe6;
+          --muted: #a3a29b;
+          --line: #2c2d33;
+          --accent: #8fb0ff;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      h1 {
+        font-size: 1.8rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 28px 0 8px;
+      }
+      p,
+      li {
+        color: var(--fg);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+      }
+      hr {
+        border: 0;
+        border-top: 1px solid var(--line);
+        margin: 40px 0;
+      }
+      code {
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="./">← QA Interview Hub</a></p>
+      <h1>Політика конфіденційності</h1>
+      <p class="muted">Оновлено 10 жовтня 2026 року</p>
+
+      <p>
+        QA Interview Hub — некомерційний навчальний сайт для підготовки до співбесід QA Automation.
+        Тут немає реклами, аналітики чи трекерів, а дані не продаються й не передаються третім
+        сторонам, окрім хостингу, потрібного для роботи сайту.
+      </p>
+
+      <h2>Без акаунта</h2>
+      <p>
+        Прогрес гостьового режиму (відповіді, картки, прочитані статті, XP) зберігається лише у
+        вашому браузері (<code>localStorage</code>) і на сервер не надсилається. Щоб перевірити
+        відповідь, браузер надсилає на сервер ідентифікатор питання й номер обраного варіанта, без
+        жодних особистих даних.
+      </p>
+
+      <h2>З акаунтом</h2>
+      <p>Якщо ви створюєте акаунт, сервер зберігає:</p>
+      <ul>
+        <li>email, імʼя для відображення та часовий пояс;</li>
+        <li>пароль лише у вигляді хешу (argon2id), сам пароль не зберігається;</li>
+        <li>
+          при вході через Google: ідентифікатор вашого Google-акаунта, email та імʼя. Ми запитуємо
+          лише базовий профіль (<code>openid email profile</code>) і не маємо доступу до інших даних
+          Google;
+        </li>
+        <li>
+          навчальний прогрес: відповіді на питання, оцінки карток, прочитані статті, спроби тестів,
+          XP, щоденні завдання та серію днів.
+        </li>
+      </ul>
+
+      <h2>Cookies</h2>
+      <p>
+        Сайт використовує лише технічні cookies для входу: cookie сесії (httpOnly, до 30 днів, у
+        базі зберігається лише її хеш) і тимчасову cookie на 10 хвилин під час входу через Google.
+        Рекламних і аналітичних cookies немає.
+      </p>
+
+      <h2>Де зберігаються дані</h2>
+      <ul>
+        <li>сайт: GitHub Pages;</li>
+        <li>сервер: Render (Франкфурт, ЄС). Технічні журнали запитів можуть містити IP-адресу;</li>
+        <li>база даних: Neon (Франкфурт, ЄС).</li>
+      </ul>
+      <p>
+        Шрифти завантажуються з Google Fonts, тому Google бачить IP-адресу браузера під час
+        завантаження сторінки.
+      </p>
+
+      <h2>Видалення даних</h2>
+      <p>
+        На сторінці «Профіль» можна назавжди видалити акаунт: разом із ним одразу видаляються всі
+        повʼязані дані (прогрес, сесії, привʼязка Google). Гостьовий прогрес видаляється очищенням
+        даних сайту в браузері.
+      </p>
+
+      <h2>Контакт</h2>
+      <p>
+        Питання щодо даних: <a href="mailto:ryanchynskyi98@gmail.com">ryanchynskyi98@gmail.com</a>.
+      </p>
+
+      <hr />
+
+      <h1 lang="en">Privacy policy (summary)</h1>
+      <div lang="en">
+        <p>
+          QA Interview Hub is a non-commercial study site. It has no ads, analytics or trackers and
+          does not sell or share data beyond the hosting it runs on (GitHub Pages; Render and Neon
+          in Frankfurt, EU).
+        </p>
+        <p>
+          Without an account, progress stays in your browser's local storage. With an account we
+          store your email, display name, time zone, a password hash (argon2id) or, with Google
+          sign-in, your Google account id, email and name (scopes
+          <code>openid email profile</code> only), and your study progress. Cookies are limited to
+          the sign-in session (httpOnly, up to 30 days) and a 10-minute cookie during Google
+          sign-in. Fonts load from Google Fonts.
+        </p>
+        <p>
+          You can delete your account and all its data at any time on the Profile page. Contact:
+          <a href="mailto:ryanchynskyi98@gmail.com">ryanchynskyi98@gmail.com</a>.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>
