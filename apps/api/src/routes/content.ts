@@ -1,13 +1,21 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { QuizQuestion, RecallCardDto } from '@qa-hub/shared';
+import {
+  langQuerySchema,
+  translateCard,
+  translateQuestion,
+  type QuizQuestion,
+  type RecallCardDto,
+} from '@qa-hub/shared';
 
 export const contentRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/content/catalog', async (_req, reply) => {
+  app.get('/content/catalog', async (req, reply) => {
+    const { lang } = langQuerySchema.parse(req.query);
     reply.header('cache-control', 'public, max-age=300');
-    return app.catalog();
+    return app.catalogIn(lang);
   });
 
   app.get<{ Params: { id: string } }>('/sections/:id/questions', async (req, reply) => {
+    const { lang } = langQuerySchema.parse(req.query);
     const section = await app.db.section.findUnique({
       where: { id: req.params.id },
       select: { id: true },
@@ -28,11 +36,13 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
         options: true,
       },
     });
+    const tr = app.translation(lang);
     reply.header('cache-control', 'public, max-age=300');
-    return questions;
+    return tr ? questions.map((q) => translateQuestion(q, tr)) : questions;
   });
 
-  app.get('/recall/cards', async (_req, reply) => {
+  app.get('/recall/cards', async (req, reply) => {
+    const { lang } = langQuerySchema.parse(req.query);
     const cards: RecallCardDto[] = await app.db.recallCard.findMany({
       orderBy: [{ topic: { order: 'asc' } }, { order: 'asc' }],
       select: {
@@ -44,7 +54,8 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
         answer: true,
       },
     });
+    const tr = app.translation(lang);
     reply.header('cache-control', 'public, max-age=300');
-    return cards;
+    return tr ? cards.map((c) => translateCard(c, tr)) : cards;
   });
 };

@@ -1073,3 +1073,71 @@
     min-width: 48px;
   }
 }
+
+/* language switch */
+.langsw {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  justify-self: start;
+}
+.langsw button {
+  font: 600 12px var(--mono);
+  min-width: 40px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.langsw button + button {
+  border-left: 1px solid var(--line-strong);
+}
+.langsw button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.langsw button:hover:not([aria-pressed='true']) {
+  color: var(--fg);
+}
+.footer-brand .langsw {
+  margin-top: 6px;
+}
+@media (pointer: coarse) {
+  .footer-brand .langsw button {
+    height: 44px;
+    min-width: 52px;
+  }
+}
+
+/* knowledge base landing */
+.kbland {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.kbtopic {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bar);
+  color: var(--fg);
+  text-decoration: none;
+}
+.kbtopic:hover {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.kbtopic b {
+  display: block;
+}
+.kbtopic small {
+  display: block;
+  font: 12px var(--mono);
+  color: var(--muted);
+}

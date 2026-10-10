@@ -15,6 +15,7 @@ import {
   type QuizQuestion,
 } from '@qa-hub/shared';
 import type { api as apiClient } from '../api';
+import { getMessages } from '../i18n';
 import type { ProgressRepo, ProgressState } from './types';
 
 const XP_LOG_SIZE = 100;
@@ -139,7 +140,7 @@ export class ServerStore implements ProgressRepo {
     choice: number | null,
   ): Promise<{ check: CheckAnswerResponse; result: ActivityResult }> {
     const res = await this.deps.api.checkAnswer({ questionId: q.id, choice });
-    if (!res.progress) throw new Error('Сесія закінчилась: увійди ще раз');
+    if (!res.progress) throw new Error(getMessages().store.sessionExpired);
     const { progress, ...check } = res;
     return { check, result: this.apply(progress) };
   }

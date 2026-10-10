@@ -1,0 +1,10 @@
+{
+  "playwright": { "name": "Playwright" },
+  "cypress": { "name": "Cypress" },
+  "typescript": { "name": "TypeScript" },
+  "manual": { "name": "Manual QA" },
+  "sql": { "name": "SQL" },
+  "api": { "name": "API" },
+  "sysdesign": { "name": "System Design" },
+  "patterns": { "name": "Patterns" }
+}

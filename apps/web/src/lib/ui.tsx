@@ -1,4 +1,17 @@
 import { Fragment, useEffect, useRef, type ReactNode } from 'react';
+import { HttpError } from '../api';
+import { getLang, useT, type Messages } from '../i18n';
+
+/**
+ * Readable error text in the current language: known API codes come from the messages,
+ * other server text (Ukrainian) is shown as is in UA and replaced by a generic line in EN.
+ */
+export function errorText(e: unknown, t: Messages): string {
+  if (e instanceof HttpError && e.code && t.auth.errors[e.code]) return t.auth.errors[e.code]!;
+  const msg = e instanceof Error ? e.message : '';
+  if (!msg) return t.common.somethingWrong;
+  return getLang() === 'en' && /[\u0400-\u04FF]/.test(msg) ? t.common.somethingWrongRetry : msg;
+}
 
 /** Inline `code` spans, like the legacy fmt(): text is escaped by React. */
 export function Fmt({ text }: { text: string }) {
@@ -60,23 +73,25 @@ export function Chip({
 }
 
 export function Loading() {
+  const t = useT();
   return (
     <div className="card">
       <p className="note" style={{ margin: 0 }}>
-        Завантаження…
+        {t.common.loading}
       </p>
     </div>
   );
 }
 
 export function LoadError({ error, retry }: { error: unknown; retry?: () => void }) {
+  const t = useT();
   return (
     <div className="card" role="alert">
-      <h2>Не вдалося завантажити</h2>
+      <h2>{t.common.loadFailed}</h2>
       <p className="note">{error instanceof Error ? error.message : String(error)}</p>
       {retry && (
         <button type="button" className="btn" onClick={retry}>
-          Спробувати ще раз
+          {t.common.retry}
         </button>
       )}
     </div>

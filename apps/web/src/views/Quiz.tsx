@@ -15,6 +15,7 @@ import {
 } from '../hooks/content';
 import { Chip, Fmt, LoadError, Loading, shuffled, useKeydown } from '../lib/ui';
 import { TopicIcon } from '../lib/topic-icons';
+import { useT } from '../i18n';
 import { useProgress, useStore } from '../progress/ProgressProvider';
 
 /* ---------- per-section session state (kept while switching tabs, like the legacy page) ---------- */
@@ -93,6 +94,7 @@ export function Quiz() {
 
 function SectionTabs({ idx, current }: { idx: CatalogIndex; current: string }) {
   const navigate = useNavigate();
+  const t = useT();
   const { questions } = useProgress();
   const stats = useMemo(() => {
     const out = new Map<string, { n: number; y: number; b: number }>();
@@ -128,9 +130,7 @@ function SectionTabs({ idx, current }: { idx: CatalogIndex; current: string }) {
               <TopicIcon id={s.id} size={16} />
               {s.name}
             </b>
-            <small>
-              {st.y} з {st.n} правильно
-            </small>
+            <small>{t.quiz.correctOf(st.y, st.n)}</small>
             <span className="mini">
               <span style={{ width: w(st.y), background: 'var(--ok)' }} />
               <span style={{ width: w(st.b), background: 'var(--bad)' }} />
@@ -229,6 +229,7 @@ function SetupView({
   onStart: (ids: string[]) => void;
 }) {
   const progress = useProgress();
+  const t = useT();
   const groups = [...new Set(questions.map((q) => q.group))];
   const selected = new Set(setup.groups ?? groups);
   const allGroups = !setup.groups || selected.size === groups.length;
@@ -249,19 +250,19 @@ function SetupView({
 
   return (
     <div className="card">
-      <h2>{section.name}: налаштування спроби</h2>
+      <h2>{t.quiz.setup(section.name)}</h2>
       <div className="group">
-        <span>Рівень</span>
+        <span>{t.quiz.level}</span>
         {(['all', 'junior', 'middle', 'senior'] as const).map((l) => (
           <Chip key={l} pressed={setup.level === l} onClick={() => onSetup({ ...setup, level: l })}>
-            {l === 'all' ? 'Усі' : l}
+            {l === 'all' ? t.common.all : l}
           </Chip>
         ))}
       </div>
       <div className="group">
-        <span>Теми</span>
+        <span>{t.quiz.topics}</span>
         <Chip pressed={allGroups} onClick={() => onSetup({ ...setup, groups: null })}>
-          Усі теми
+          {t.quiz.allTopics}
         </Chip>
         {groups.map((g) => (
           <Chip key={g} pressed={!allGroups && selected.has(g)} onClick={() => toggleGroup(g)}>
@@ -270,10 +271,10 @@ function SetupView({
         ))}
       </div>
       <div className="group">
-        <span>Питань</span>
+        <span>{t.quiz.count}</span>
         {([10, 20, 0] as const).map((c) => (
           <Chip key={c} pressed={setup.count === c} onClick={() => onSetup({ ...setup, count: c })}>
-            {c || 'Усі'}
+            {c || t.common.all}
           </Chip>
         ))}
       </div>
@@ -288,7 +289,7 @@ function SetupView({
               onStart(setup.count ? ids.slice(0, setup.count) : ids);
             }}
           >
-            Почати ({total})
+            {t.common.startN(total)}
           </button>
           <button
             type="button"
@@ -296,25 +297,24 @@ function SetupView({
             disabled={!weak.length}
             onClick={() => onStart(shuffled(weak).map((q) => q.id))}
           >
-            Слабкі місця ({weak.length})
+            {t.quiz.weak(weak.length)}
           </button>
         </div>
       </div>
       <p className="note" style={{ marginTop: 14 }}>
-        Слабкі місця: питання, на які остання відповідь була неправильна або пропущена. Після кожної
-        відповіді є посилання на розділ Knowledge Base з теорією.
+        {t.quiz.weakNote}
       </p>
       {attempts.length > 0 && (
         <p className="note">
-          Останні спроби:
+          {t.quiz.lastAttempts}
           {attempts.map((a) => (
             <span key={a.at}>
               <br />
-              {new Date(a.at).toLocaleString('uk-UA', {
+              {new Date(a.at).toLocaleString(t.locale, {
                 dateStyle: 'short',
                 timeStyle: 'short',
               })}
-              : {a.y} з {a.n}
+              : {t.quiz.attempt(a.y, a.n)}
             </span>
           ))}
         </p>
@@ -326,6 +326,7 @@ function SetupView({
 /* ---------- running quiz ---------- */
 
 function ProgressBar({ run }: { run: Run }) {
+  const t = useT();
   const n = run.ids.length;
   const v = Object.values(run.res);
   const c = (k: Verdict) => v.filter((x) => x === k).length;
@@ -333,10 +334,8 @@ function ProgressBar({ run }: { run: Run }) {
   return (
     <>
       <div className="top">
-        <span>{run.i < n && !run.done ? `Питання ${run.i + 1} з ${n}` : 'Завершено'}</span>
-        <span>
-          Правильно {c('y')} · Помилки {c('n')} · Пропущено {c('s')}
-        </span>
+        <span>{run.i < n && !run.done ? t.quiz.questionOf(run.i + 1, n) : t.quiz.finished}</span>
+        <span>{t.quiz.counts(c('y'), c('n'), c('s'))}</span>
       </div>
       <div className="bar">
         <span style={{ width: w('y'), background: 'var(--ok)' }} />
@@ -350,17 +349,18 @@ function ProgressBar({ run }: { run: Run }) {
 function KbLink({
   idx,
   chapterId,
-  label = 'Теорія',
+  label,
 }: {
   idx: CatalogIndex;
   chapterId: string;
   label?: string;
 }) {
+  const t = useT();
   const ch = idx.chapter.get(chapterId);
   if (!ch) return null;
   return (
     <Link className="golink" to={`/kb/${ch.topicId}/${ch.id}`}>
-      {label}: {ch.title} →
+      {label ?? t.common.theory}: {ch.title} →
     </Link>
   );
 }
@@ -379,6 +379,7 @@ function RunView({
   update: (fn: (r: Run) => Run) => void;
 }) {
   const store = useStore();
+  const t = useT();
   const nextRef = useRef<HTMLButtonElement>(null);
   const q = byId.get(run.ids[run.i]!)!;
   const topicId = idx.topicOfSection.get(section.id)!;
@@ -406,7 +407,7 @@ function RunView({
       update((r) => ({
         ...r,
         pending: false,
-        error: `Не вдалося перевірити відповідь: ${e instanceof Error ? e.message : String(e)}`,
+        error: t.quiz.checkFailed(e instanceof Error ? e.message : String(e)),
       }));
     }
   };
@@ -501,7 +502,7 @@ function RunView({
         {a && verdict && (
           <div className="ex">
             <div className={`verdict ${verdict}`}>
-              {{ y: 'Правильно', n: 'Неправильно', s: 'Пропущено' }[verdict]}
+              {t.quiz.verdict[verdict]}
               {a.xp > 0 && <span className="xpgain">+{a.xp} XP</span>}
             </div>
             <Fmt text={a.check.explanation} />
@@ -517,18 +518,18 @@ function RunView({
               disabled={run.pending}
               onClick={() => void choose(null)}
             >
-              Пропустити
+              {t.quiz.skip}
             </button>
           ) : (
             <span />
           )}
           <div className="left">
             <button type="button" className="btn" onClick={stop}>
-              Завершити спробу
+              {t.quiz.stop}
             </button>
             {a && (
               <button type="button" className="btn primary" ref={nextRef} onClick={next}>
-                Далі
+                {t.quiz.next}
               </button>
             )}
           </div>
@@ -553,6 +554,7 @@ function Results({
   onRedo: (ids: string[]) => void;
   onAgain: () => void;
 }) {
+  const t = useT();
   const n = run.ids.length;
   const y = run.ids.filter((id) => run.res[id] === 'y').length;
   const pctDone = Math.round((y / n) * 100);
@@ -568,19 +570,15 @@ function Results({
   const rows = [...by.entries()].sort((a, b) => a[1].y / a[1].a - b[1].y / b[1].a);
   const missed = run.ids.filter((id) => run.res[id] !== 'y');
   const verdict =
-    pctDone >= 85
-      ? 'Впевнений рівень. Закріпи в Active Recall: розкажи ці теми вголос.'
-      : pctDone >= 65
-        ? 'Середній рівень. Відкрий теорію для тем з таблиці нижче 70%, а не проходь весь тест знову.'
-        : 'Слабко для Senior. Пройди помилки, прочитай розділи з таблиці і поясни їх вголос в Active Recall.';
+    pctDone >= 85 ? t.quiz.resultHigh : pctDone >= 65 ? t.quiz.resultMid : t.quiz.resultLow;
 
   return (
     <>
       <ProgressBar run={run} />
       <div className="card" data-testid="results">
         <div className="meta">
-          <span className="tag">Результат</span>
-          {run.bonus > 0 && <span className="xpgain">+{run.bonus} XP бонус</span>}
+          <span className="tag">{t.quiz.result}</span>
+          {run.bonus > 0 && <span className="xpgain">{t.quiz.bonus(run.bonus)}</span>}
         </div>
         <div
           className="big"
@@ -591,20 +589,20 @@ function Results({
           {pctDone}%
         </div>
         <p className="runline">
-          <span className="ok">{y} passed</span>, <span className="bad">{n - y} failed</span> ·
-          Tests: {n} total
+          <span className="ok">{t.today.passed(y)}</span>,{' '}
+          <span className="bad">{t.quiz.failed(n - y)}</span> · {t.quiz.testsTotal(n)}
         </p>
         <p>
-          {y} правильних з {n}. {verdict}
+          {t.quiz.correctSummary(y, n)} {verdict}
         </p>
         <div className="tw">
           <table>
             <thead>
               <tr>
-                <th>Тема</th>
-                <th>Правильно</th>
+                <th>{t.quiz.colTopic}</th>
+                <th>{t.quiz.colCorrect}</th>
                 <th>%</th>
-                <th>Теорія</th>
+                <th>{t.common.theory}</th>
               </tr>
             </thead>
             <tbody>
@@ -633,10 +631,10 @@ function Results({
               disabled={!missed.length}
               onClick={() => onRedo(missed)}
             >
-              Пройти помилки й пропуски ще раз ({missed.length})
+              {t.quiz.redo(missed.length)}
             </button>
             <button type="button" className="btn" onClick={onAgain}>
-              Нова спроба
+              {t.quiz.again}
             </button>
           </div>
         </div>
@@ -657,6 +655,7 @@ function WipeButton({
   onWiped: () => void;
 }) {
   const store = useStore();
+  const t = useT();
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!armed) return;
@@ -680,7 +679,7 @@ function WipeButton({
             .then(onWiped);
         }}
       >
-        {armed ? 'Точно? Натисни ще раз' : 'Очистити прогрес цієї секції'}
+        {armed ? t.quiz.wipeConfirm : t.quiz.wipe}
       </button>
     </div>
   );

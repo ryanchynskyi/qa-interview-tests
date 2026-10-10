@@ -4,15 +4,8 @@ import { RECALL_INTERVAL_DAYS, topicSkills, type RecallCardDto } from '@qa-hub/s
 import { useCatalog, useCatalogIndex, useRecallCards, type CatalogIndex } from '../hooks/content';
 import { createStore, useNow } from '../lib/stores';
 import { Chip, Fmt, LoadError, Loading, shuffled, useKeydown } from '../lib/ui';
+import { useT } from '../i18n';
 import { useProgress, useSkillProgress, useStore } from '../progress/ProgressProvider';
-
-const RATES: [number, string][] = [
-  [1, 'Не знаю'],
-  [2, 'Слабко'],
-  [3, 'Частково'],
-  [4, 'Добре'],
-  [5, 'Як на співбесіді'],
-];
 
 interface Filter {
   topic: string;
@@ -97,6 +90,7 @@ function SetupView({
   const progress = useProgress();
   const skill = useSkillProgress();
   const count = countStore.use();
+  const t = useT();
   const now = useNow();
 
   const { chapter, topic, due: dueOnly } = filter;
@@ -122,32 +116,28 @@ function SetupView({
   const rows = useMemo(() => topicSkills(idx.catalog, skill, now), [idx, skill, now]);
   const total = pool.due.length + pool.fresh.length + pool.later.length;
   const scope = filter.chapter
-    ? `Розділ: ${idx.chapter.get(filter.chapter)?.title}`
+    ? t.recall.scopeChapter(idx.chapter.get(filter.chapter)?.title ?? '')
     : filter.due
-      ? 'Картки, які пора повторити'
+      ? t.recall.scopeDue
       : filter.topic
-        ? idx.topicName.get(filter.topic)
-        : 'Усі теми';
+        ? (idx.topicName.get(filter.topic) ?? '')
+        : t.recall.scopeAll;
 
   return (
     <div className="two">
       <section className="card">
         <h2>Active Recall</h2>
-        <p style={{ marginTop: 0 }}>
-          Питання в стилі співбесіди. Спершу відповідай вголос, як інтервʼюеру, і тільки потім
-          відкривай еталон. Оцінюй чесно: 3 означає, що ти сказав суть, але без прикладу чи деталей.
-          Оцінка впливає на дашборд і на те, коли картка повернеться.
-        </p>
+        <p style={{ marginTop: 0 }}>{t.recall.intro}</p>
         <div className="group">
-          <span>Тема</span>
+          <span>{t.common.topic}</span>
           <Chip
             pressed={!filter.topic && !filter.chapter && !filter.due}
             onClick={() => navigate('/recall/all')}
           >
-            Усі
+            {t.common.all}
           </Chip>
           <Chip pressed={filter.due} onClick={() => navigate('/recall/due')}>
-            Пора повторити
+            {t.recall.due}
           </Chip>
           {idx.catalog.topics.map((t) => (
             <Chip
@@ -165,17 +155,15 @@ function SetupView({
           )}
         </div>
         <div className="group">
-          <span>Карток</span>
+          <span>{t.recall.cards}</span>
           {([10, 20, 0] as const).map((c) => (
             <Chip key={c} pressed={count === c} onClick={() => countStore.set(c)}>
-              {c || 'Усі'}
+              {c || t.common.all}
             </Chip>
           ))}
         </div>
         <p className="note">
-          {scope}: до повторення {pool.due.length}, нових {pool.fresh.length}, відкладених{' '}
-          {pool.later.length}. Порядок: спершу ті, що пора повторити (з найнижчою оцінкою), потім
-          нові, потім решта.
+          {t.recall.pool(scope, pool.due.length, pool.fresh.length, pool.later.length)}
         </p>
         <div className="actions">
           <div className="left">
@@ -188,21 +176,21 @@ function SetupView({
                 onStart(count ? all.slice(0, count) : all);
               }}
             >
-              Почати ({count ? Math.min(count, total) : total})
+              {t.common.startN(count ? Math.min(count, total) : total)}
             </button>
           </div>
         </div>
       </section>
       <section className="card">
-        <h2>Прогрес по темах</h2>
+        <h2>{t.recall.progress}</h2>
         <div className="tw" style={{ margin: 0 }}>
           <table>
             <thead>
               <tr>
-                <th>Тема</th>
-                <th>Оцінено</th>
-                <th>Середнє</th>
-                <th>Пора</th>
+                <th>{t.common.topic}</th>
+                <th>{t.recall.colRated}</th>
+                <th>{t.recall.colAvg}</th>
+                <th>{t.recall.colDue}</th>
               </tr>
             </thead>
             <tbody>
@@ -222,8 +210,7 @@ function SetupView({
           </table>
         </div>
         <p className="legend">
-          Інтервали: 1 і нижче повертається в цій же сесії, 2 через {RECALL_INTERVAL_DAYS[1]} день,
-          3 через {RECALL_INTERVAL_DAYS[2]} дні, 4 через тиждень, 5 через два тижні.
+          {t.recall.intervals(RECALL_INTERVAL_DAYS[1], RECALL_INTERVAL_DAYS[2])}
         </p>
       </section>
     </div>
@@ -241,6 +228,7 @@ function SessionView({
 }) {
   const store = useStore();
   const progress = useProgress();
+  const t = useT();
   const navigate = useNavigate();
 
   const reveal = () => {
@@ -271,7 +259,7 @@ function SessionView({
       sessionStore.set({
         ...s,
         pending: false,
-        error: `Не вдалося зберегти оцінку: ${e instanceof Error ? e.message : String(e)}`,
+        error: t.recall.rateFailed(e instanceof Error ? e.message : String(e)),
       });
     }
   };
@@ -292,26 +280,22 @@ function SessionView({
     return (
       <div className="card" data-testid="recall-done">
         <div className="meta">
-          <span className="tag">Сесія завершена</span>
+          <span className="tag">{t.recall.done}</span>
           {s.xp > 0 && <span className="xpgain">+{s.xp} XP</span>}
         </div>
         <div className="big">{avg.toFixed(1)}</div>
         <p>
-          Середня самооцінка за {s.got.length} відповідей.
-          {avg >= 4
-            ? ' Добре: ці теми можна розповідати на співбесіді.'
-            : avg >= 3
-              ? ' Суть знаєш, але бракує прикладів і деталей. Перечитай розділи нижче і повтори завтра.'
-              : ' Це прогалини, які на співбесіді будуть видні одразу. Почни з теорії по картках нижче.'}
+          {t.recall.avgOf(s.got.length)}
+          {avg >= 4 ? t.recall.avgHigh : avg >= 3 ? t.recall.avgMid : t.recall.avgLow}
         </p>
         {low.length > 0 && (
           <div className="tw">
             <table>
               <thead>
                 <tr>
-                  <th>Питання</th>
-                  <th>Оцінка</th>
-                  <th>Теорія</th>
+                  <th>{t.recall.colQuestion}</th>
+                  <th>{t.recall.colRating}</th>
+                  <th>{t.common.theory}</th>
                 </tr>
               </thead>
               <tbody>
@@ -335,7 +319,7 @@ function SessionView({
         <div className="actions">
           <div className="left">
             <button type="button" className="btn primary" onClick={onEnd}>
-              Ще сесія
+              {t.recall.again}
             </button>
             <button
               type="button"
@@ -345,7 +329,7 @@ function SessionView({
                 navigate('/dash');
               }}
             >
-              До дашборду
+              {t.common.toDashboard}
             </button>
           </div>
         </div>
@@ -361,10 +345,8 @@ function SessionView({
   return (
     <>
       <div className="top">
-        <span>
-          Картка {s.i + 1} з {n}
-        </span>
-        <span>{p ? `Остання оцінка ${p.rating} · повторів ${p.reviews}` : 'Нова картка'}</span>
+        <span>{t.recall.cardOf(s.i + 1, n)}</span>
+        <span>{p ? t.recall.lastRating(p.rating, p.reviews) : t.recall.newCard}</span>
       </div>
       <div className="bar">
         <span style={{ width: `${(s.i / n) * 100}%`, background: 'var(--accent)' }} />
@@ -377,15 +359,12 @@ function SessionView({
         <p className="rq">
           <Fmt text={card.question} />
         </p>
-        <p className="note">
-          Відповідай вголос 1–2 хвилини. Структура: визначення, як це працює, приклад з практики,
-          підводні камені.
-        </p>
+        <p className="note">{t.recall.hint}</p>
         {!s.shown ? (
           <div className="actions qactions">
             <div className="left">
               <button type="button" className="btn primary" onClick={reveal}>
-                Показати відповідь
+                {t.recall.reveal}
               </button>
             </div>
             <button
@@ -393,34 +372,36 @@ function SessionView({
               className="btn ghost"
               onClick={() => sessionStore.set({ ...s, items: s.items.slice(0, s.i) })}
             >
-              Завершити
+              {t.recall.finish}
             </button>
           </div>
         ) : (
           <div className="ans">
-            <h3>Еталонна відповідь</h3>
+            <h3>{t.recall.answer}</h3>
             <p>
               <Fmt text={card.answer} />
             </p>
             {ch && (
               <Link className="golink" to={`/kb/${ch.topicId}/${ch.id}`}>
-                Детальніше: {ch.title} →
+                {t.recall.more(ch.title)}
               </Link>
             )}
-            <h3 style={{ marginTop: 16 }}>Наскільки добре ти відповів?</h3>
+            <h3 style={{ marginTop: 16 }}>{t.recall.howWell}</h3>
             <div className="rate">
-              {RATES.map(([v, label]) => (
-                <button
-                  key={v}
-                  type="button"
-                  className={`r${v}`}
-                  disabled={s.pending}
-                  onClick={() => void rate(v)}
-                >
-                  {v}
-                  <small>{label}</small>
-                </button>
-              ))}
+              {t.recall.rates
+                .map((label, i) => [i + 1, label] as const)
+                .map(([v, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`r${v}`}
+                    disabled={s.pending}
+                    onClick={() => void rate(v)}
+                  >
+                    {v}
+                    <small>{label}</small>
+                  </button>
+                ))}
             </div>
             {s.error && (
               <p className="err" role="alert">

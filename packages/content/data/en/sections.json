@@ -1,0 +1,12 @@
+{
+  "playwright": { "name": "Playwright", "description": "Quiz" },
+  "cypress": { "name": "Cypress", "description": "Quiz" },
+  "typescript": { "name": "TypeScript", "description": "Quiz" },
+  "manual": { "name": "Manual QA", "description": "STLC, test design, Docker" },
+  "sql": { "name": "SQL", "description": "Quiz, PostgreSQL" },
+  "api": { "name": "API", "description": "Quiz" },
+  "sysdesign": { "name": "System Design", "description": "Test systems and backend" },
+  "patterns": { "name": "Patterns", "description": "Playwright + TS" },
+  "pwfix": { "name": "Playwright: Code review", "description": "Find the bug" },
+  "tsfix": { "name": "TypeScript: Code review", "description": "Find the bug" }
+}

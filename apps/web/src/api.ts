@@ -18,6 +18,7 @@ import type {
   SearchHit,
   XpDay,
 } from '@qa-hub/shared';
+import { getLang, type Lang } from './i18n';
 
 /** Same-origin `/api` in dev (Vite proxy); set VITE_API_URL for a separately hosted API. */
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
@@ -120,17 +121,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 
+/** Ukrainian (the source) needs no parameter; other languages ask for their overlay. */
+const withLang = (path: string, lang: Lang) =>
+  lang === 'uk' ? path : `${path}${path.includes('?') ? '&' : '?'}lang=${lang}`;
+
 export const api = {
   /* content */
-  catalog: () => request<Catalog>('/content/catalog'),
-  questions: (sectionId: string) =>
-    request<QuizQuestion[]>(`/sections/${encodeURIComponent(sectionId)}/questions`),
-  recallCards: () => request<RecallCardDto[]>('/recall/cards'),
-  chapter: (id: string) => request<ChapterDto>(`/kb/chapters/${encodeURIComponent(id)}`),
-  search: (q: string) => request<SearchHit[]>(`/kb/search?q=${encodeURIComponent(q)}`),
+  catalog: (lang: Lang = 'uk') => request<Catalog>(withLang('/content/catalog', lang)),
+  questions: (sectionId: string, lang: Lang = 'uk') =>
+    request<QuizQuestion[]>(withLang(`/sections/${encodeURIComponent(sectionId)}/questions`, lang)),
+  recallCards: (lang: Lang = 'uk') => request<RecallCardDto[]>(withLang('/recall/cards', lang)),
+  chapter: (id: string, lang: Lang = 'uk') =>
+    request<ChapterDto>(withLang(`/kb/chapters/${encodeURIComponent(id)}`, lang)),
+  search: (q: string, lang: Lang = 'uk') =>
+    request<SearchHit[]>(withLang(`/kb/search?q=${encodeURIComponent(q)}`, lang)),
 
-  /* answers: also recorded server-side when signed in */
-  checkAnswer: (body: CheckAnswerRequest) => post<CheckAnswerWithProgress>('/quiz/check', body),
+  /* answers: also recorded server-side when signed in; the explanation is in the UI language */
+  checkAnswer: (body: CheckAnswerRequest) =>
+    post<CheckAnswerWithProgress>('/quiz/check', { ...body, lang: body.lang ?? getLang() }),
 
   /* auth */
   register: (body: RegisterRequest) =>

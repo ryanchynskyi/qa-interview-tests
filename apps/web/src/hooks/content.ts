@@ -2,38 +2,54 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Catalog, CatalogChapter } from '@qa-hub/shared';
 import { api } from '../api';
+import { useLang } from '../i18n';
 
-// Content only changes on deploy, so it never goes stale within a session.
+// Content only changes on deploy, so it never goes stale within a session. Every query is
+// keyed by language: switching it fetches the other overlay once.
 const forever = { staleTime: Infinity, gcTime: Infinity } as const;
 
-export const useCatalog = () =>
-  useQuery({ queryKey: ['catalog'], queryFn: api.catalog, ...forever });
+export const useCatalog = () => {
+  const lang = useLang();
+  return useQuery({ queryKey: ['catalog', lang], queryFn: () => api.catalog(lang), ...forever });
+};
 
-export const useSectionQuestions = (sectionId: string) =>
-  useQuery({
-    queryKey: ['questions', sectionId],
-    queryFn: () => api.questions(sectionId),
+export const useSectionQuestions = (sectionId: string) => {
+  const lang = useLang();
+  return useQuery({
+    queryKey: ['questions', sectionId, lang],
+    queryFn: () => api.questions(sectionId, lang),
     ...forever,
   });
+};
 
-export const useRecallCards = () =>
-  useQuery({ queryKey: ['recall-cards'], queryFn: api.recallCards, ...forever });
+export const useRecallCards = () => {
+  const lang = useLang();
+  return useQuery({
+    queryKey: ['recall-cards', lang],
+    queryFn: () => api.recallCards(lang),
+    ...forever,
+  });
+};
 
-export const useChapter = (id: string | undefined) =>
-  useQuery({
-    queryKey: ['chapter', id],
-    queryFn: () => api.chapter(id!),
+export const useChapter = (id: string | undefined) => {
+  const lang = useLang();
+  return useQuery({
+    queryKey: ['chapter', id, lang],
+    queryFn: () => api.chapter(id!, lang),
     enabled: !!id,
     ...forever,
   });
+};
 
-export const useKbSearch = (q: string) =>
-  useQuery({
-    queryKey: ['search', q],
-    queryFn: () => api.search(q),
+export const useKbSearch = (q: string) => {
+  const lang = useLang();
+  return useQuery({
+    queryKey: ['search', q, lang],
+    queryFn: () => api.search(q, lang),
     enabled: q.length >= 2,
     staleTime: 60_000,
   });
+};
 
 /** Lookup tables derived from the catalog, built once per catalog. */
 export interface CatalogIndex {

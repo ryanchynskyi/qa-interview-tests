@@ -11,6 +11,7 @@ import {
   type Catalog,
   type ImportPayload,
 } from '@qa-hub/shared';
+import { getMessages, type Messages } from '../i18n';
 import type { ProgressState } from './types';
 
 export interface ImportSource {
@@ -52,19 +53,21 @@ const describe = (kind: ImportSource['kind'], payload: ImportPayload): ImportSou
 });
 
 /** Parses pasted backup text from the legacy page ("Скопіювати прогрес"). */
-export function parseLegacyBackup(text: string, catalog: Catalog): ImportPayload {
+export function parseLegacyBackup(
+  text: string,
+  catalog: Catalog,
+  t: Messages = getMessages(),
+): ImportPayload {
   let raw: unknown;
   try {
     raw = JSON.parse(text.trim());
   } catch {
-    throw new Error(
-      'Це не схоже на скопійований прогрес: текст має починатися з { і закінчуватися }.',
-    );
+    throw new Error(t.importer.notJson);
   }
   try {
     return fromLegacy(raw, legacyIndexFromCatalog(catalog), Date.now());
   } catch {
-    throw new Error('У тексті немає даних прогресу. Скопіюй його кнопкою «Скопіювати прогрес».');
+    throw new Error(t.importer.noData);
   }
 }
 
