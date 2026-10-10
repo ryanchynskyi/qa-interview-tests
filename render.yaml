@@ -7,8 +7,8 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    # Switch to main once fullstack is merged (M8 step 5).
-    branch: fullstack
+    # Production deploys come from main (develop reaches it through pull requests).
+    branch: main
     # Dev dependencies are needed to build: prisma CLI (migrations) and tsx (runs the TypeScript).
     buildCommand: npm ci --include=dev && npm run db:deploy -w @qa-hub/api && npm run db:seed
     startCommand: node --import tsx apps/api/src/server.ts

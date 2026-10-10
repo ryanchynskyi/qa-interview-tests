@@ -6,13 +6,14 @@ user-facing overview and API table.
 
 ## Git rules (important)
 
-- **`main` is production.** GitHub Pages serves the legacy single-file app from the root
-  `index.html` of `main` at https://ryanchynskyi.github.io/qa-interview-tests/. Never push to `main`
-  or open PRs into it until the deploy milestone (M8) is explicitly started.
-- All work happens on **`fullstack`** (milestone commits M1–M7 are there).
-- History quirk: PR #1 (M1) was merged into `main` and then reverted (revert commit `cd08947`, merged
-  as PR #2 `f9c6d6f`). Before merging `fullstack` into `main` again, **revert that revert**, otherwise
-  git treats the M1 commits as already merged and silently drops them.
+- **`main` is production.** Every push to `main` deploys: the Pages workflow publishes the web app
+  to https://ryanchynskyi.github.io/qa-interview-tests/ (old site at `/legacy/`), and Render
+  redeploys the API (https://qa-hub-api.onrender.com) from `main`. Never push to `main` directly.
+- All work happens on **`develop`** (was `fullstack`; M1–M8 are there). It reaches `main` only through
+  a pull request `develop → main`, merged with "Create a merge commit". After a merge, merge `main`
+  back into `develop` so the merge commits don't pile up as differences.
+- History: M1 was merged (PR #1), reverted (`cd08947`), and the revert reverted again in PR #3
+  (M1–M8 release). Nothing special is needed any more.
 - Commit as **`ryanchynskyi <ryanchynskyi98@gmail.com>`** (set as repo-local git config; the machine's
   global identity belongs to another GitHub account). End commit messages with
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -128,12 +129,11 @@ M8 — tests and deployment:
 1. ~~Playwright e2e tests, wired into CI~~ (done: `e2e/`).
 2. ~~Bundle split~~ (done: lazy route views; zod schemas live in `*.schema.ts` and `@qa-hub/shared` is
    `sideEffects: false`, so the web bundle has no zod. Keep schemas out of the runtime modules).
-3. Hosting (code done, accounts not created yet): API on Render free (`render.yaml`), Postgres on
-   Neon free, web stays on GitHub Pages. Cookie strategy decided: cross-site mode
+3. ~~Hosting~~ (live since PR #3): API on Render free (`render.yaml`), Postgres on Neon free (Frankfurt),
+   web on GitHub Pages. Cookie strategy decided: cross-site mode
    (`COOKIE_SAMESITE=none` → `SameSite=None; Secure; Partitioned`, Origin check on writes); Google
    callback hands the app a one-time code redeemed by fetch (`POST /auth/google/exchange`) so the
    refresh cookie lands in the partitioned jar. `TRUST_PROXY=1` for per-IP rate limits — verify
    `req.ip` in Render logs after the first deploy. Steps: README "Deploying".
 4. Google: add the production redirect URI, then publish the OAuth app.
-5. Switch Pages to an Actions build, revert the revert on `main`, merge `fullstack`, keep the legacy
-   app reachable (e.g. `/legacy/`) during the transition.
+5. ~~Pages via Actions, revert the revert, merge into `main`~~ (done in PR #3; legacy at `/legacy/`).
