@@ -34,6 +34,15 @@ const envSchema = z.object({
     .regex(/^(true|false|\d+)$/, 'TRUST_PROXY: true, false or a hop count')
     .default('false')
     .transform((v) => (v === 'true' ? true : v === 'false' ? false : Number(v))),
+  /**
+   * A header the hosting edge overwrites with the client's IP (Render/Cloudflare: true-client-ip).
+   * Rate limits key on it; X-Forwarded-For there holds client-supplied values plus several hops.
+   */
+  CLIENT_IP_HEADER: z
+    .string()
+    .regex(/^[a-z0-9-]+$/i)
+    .transform((v) => v.toLowerCase())
+    .optional(),
 });
 
 export type Config = z.infer<typeof envSchema> & { cookieSecure: boolean };

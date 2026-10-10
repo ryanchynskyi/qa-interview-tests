@@ -56,6 +56,8 @@ export interface AppDeps {
   logger?: FastifyServerOptions['logger'];
   /** Proxy hops to trust for the client IP (X-Forwarded-For); see TRUST_PROXY. */
   trustProxy?: boolean | number;
+  /** Header with the client IP set by the hosting edge; rate limits key on it (CLIENT_IP_HEADER). */
+  clientIpHeader?: string;
 }
 
 /**
@@ -75,6 +77,7 @@ export async function buildApp({
   webAppUrl = `${webOrigin}/`,
   logger = false,
   trustProxy = false,
+  clientIpHeader,
 }: AppDeps) {
   const app = Fastify({
     logger,
@@ -135,7 +138,15 @@ export async function buildApp({
   });
   await app.register(cookie);
   // Opt-in per route via `config.rateLimit`.
-  if (rateLimits) await app.register(rateLimit, { global: false });
+  if (rateLimits) {
+    await app.register(rateLimit, {
+      global: false,
+      keyGenerator: (req) => {
+        const v = clientIpHeader && req.headers[clientIpHeader];
+        return typeof v === 'string' && v ? v : req.ip;
+      },
+    });
+  }
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof ZodError) {

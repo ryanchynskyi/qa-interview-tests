@@ -12,6 +12,7 @@ const app = await buildApp({
   cookieSecure: config.cookieSecure,
   crossSiteCookies: config.COOKIE_SAMESITE === 'none',
   trustProxy: config.TRUST_PROXY,
+  clientIpHeader: config.CLIENT_IP_HEADER,
   webAppUrl: config.WEB_APP_URL,
   google:
     config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET && config.GOOGLE_REDIRECT_URI
